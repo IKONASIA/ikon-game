@@ -10,19 +10,9 @@
 <section id="home" class="card">
  <div class="hero"><div class="eyebrow">THINK FAST • WORK SMART • WIN TOGETHER</div><h1>IKON <em>BRAIN BATTLE</em></h1><p>Two teams. Different challenges. One champion.</p></div>
  <div class="two">
-  <div class="teambox bluebox"><h2>🎓 HOST / TEACHER</h2><p>Create a room, start rounds and control the battle.</p><button id="hostBtn" class="gold">Create New Battle</button></div>
   <div class="teambox redbox"><h2>⚡ JOIN YOUR TEAM</h2><label>Registration Number<input id="regNoInput" placeholder="Enter your registration number" autocomplete="off"></label><button id="joinBtn" class="red">Join Battle</button></div>
- </div><p class="hint">Teacher opens this page on the main screen. Team A and Team B join from separate devices.</p>
+ </div><p class="hint">Enter your Registration Number to join your assigned team.</p>
 </section>
-
-<section id="host" class="hidden">
- <div class="card center"><div class="eyebrow">LIVE CLASSROOM BATTLE</div><h2>Students join using their Registration Number</h2><p class="muted">No room code required on student devices.</p>
- <div class="scoregrid"><div class="scorebox bluebox"><span>TEAM A</span><strong id="scoreA">0</strong><small id="teamAInfo">Waiting to join</small></div><div class="scorebox redbox"><span>TEAM B</span><strong id="scoreB">0</strong><small id="teamBInfo">Waiting to join</small></div></div>
- <div id="roundPills" class="roundpills"></div><div class="timer" id="hostTimer">--:--</div><h2 id="hostRoundTitle">Waiting to start</h2><p id="hostInstruction" class="muted"></p><div class="bar"><i id="hostBar"></i></div>
- <div class="controls"><button id="startBtn" class="gold">Start First Round</button><button id="nextBtn" class="blue">Next Round</button><button id="endBtn" class="red">Finish Battle</button></div><p id="hostMessage" class="hint">Waiting for teams to join…</p></div>
- <div class="card"><h2>Round task preview</h2><div id="taskPreview" class="preview muted">Tasks will appear here when a round starts.</div></div>
-</section>
-
 <section id="team" class="hidden">
  <div class="card"><div class="teamhead"><span id="teamRoomLabel">IKON BATTLE</span><b id="myTeamLabel">TEAM A</b></div><div class="center"><div class="eyebrow">YOUR TEAM SCORE</div><div class="timer" id="myScore">0</div><h2 id="teamRoundTitle">Waiting for teacher…</h2><p id="teamInstruction" class="muted"></p><div class="bar"><i id="teamBar"></i></div><div class="timer smalltimer" id="teamTimer">--:--</div></div>
  <div id="playArea" class="playarea"><p class="muted center">Your teacher will start the battle shortly.</p></div><p id="teamFeedback" class="hint"></p></div>
