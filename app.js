@@ -4,7 +4,7 @@ const $ = id => document.getElementById(id);
 let role="", room="", team="", playerName="", regNo="", playerId="", state=null, poller=null, tickTimer=null, answered={}, endingRound=false;
 playerId = (crypto.randomUUID ? crypto.randomUUID() : "p"+Date.now()+"_"+Math.random().toString(36).slice(2));
 const screens=["home","host","team","result"];
-function screen(id){screens.forEach(s=>$(s).classList.toggle("hidden",s!==id))}
+function screen(id){screens.forEach(s=>{const el=$(s);if(el)el.classList.toggle("hidden",s!==id)})}
 function api(action,data={}) {
  return new Promise((resolve,reject)=>{
   if(API_URL.startsWith("PASTE_")) return reject(new Error("Apps Script URL missing. Follow SETUP-GUIDE.txt."));
@@ -78,8 +78,8 @@ function renderTimer(){
  if(left===0 && role==="host" && !state.roundOver && !endingRound){endingRound=true;api("endRound",{room}).then(refresh).catch(console.warn).finally(()=>endingRound=false)}
 }
 async function showFinal(){const s=state.scores||{A:0,B:0};$("finalScoreA").textContent=s.A||0;$("finalScoreB").textContent=s.B||0;$("finalNameA").textContent=state.teams?.A?.name||"TEAM A";$("finalNameB").textContent=state.teams?.B?.name||"TEAM B";$("winner").textContent=s.A===s.B?"🤝 IT'S A DRAW!":s.A>s.B?`🏆 ${state.teams?.A?.name||"TEAM A"} WINS!`:`🏆 ${state.teams?.B?.name||"TEAM B"} WINS!`;screen("result")}
-$("hostBtn").onclick=async()=>{try{role="host";const d=await api("createRoom",{});room=d.room;screen("host");startPolling()}catch(e){alert(e.message)}};
-$("joinBtn").onclick=async()=>{try{regNo=$("regNoInput").value.trim().toUpperCase();if(!regNo)throw Error("Enter your registration number.");role="team";const joined=await api("joinPlayer",{regNo,playerId});room=joined.room;team=joined.team;playerName=joined.playerName;$("teamRoomLabel").textContent="IKON BATTLE";$("myTeamLabel").textContent=(team==="A"?"🔵 TEAM A":"🔴 TEAM B")+" • "+playerName;screen("team");startPolling()}catch(e){alert(e.message)}};
+if($("hostBtn"))$("hostBtn").onclick=async()=>{try{role="host";const d=await api("createRoom",{});room=d.room;screen("host");startPolling()}catch(e){alert(e.message)}};
+if($("joinBtn"))$("joinBtn").onclick=async()=>{try{regNo=$("regNoInput").value.trim().toUpperCase();if(!regNo)throw Error("Enter your registration number.");role="team";const joined=await api("joinPlayer",{regNo,playerId});room=joined.room;team=joined.team;playerName=joined.playerName;$("teamRoomLabel").textContent="IKON BATTLE";$("myTeamLabel").textContent=(team==="A"?"🔵 TEAM A":"🔴 TEAM B")+" • "+playerName;screen("team");startPolling()}catch(e){alert(e.message)}};
 $("startBtn").onclick=async()=>{try{await api("startRound",{room,roundIndex:state.currentRound<0?0:state.currentRound+1});await refresh()}catch(e){alert(e.message)}};
 $("nextBtn").onclick=async()=>{try{await api("startRound",{room,roundIndex:state.currentRound+1});await refresh()}catch(e){alert(e.message)}};
 $("endBtn").onclick=async()=>{if(confirm("Finish this battle?")){try{await api("finishBattle",{room});await refresh()}catch(e){alert(e.message)}}};
