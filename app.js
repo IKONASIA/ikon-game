@@ -1,5 +1,5 @@
 /* CONFIG: paste your deployed Google Apps Script Web App URL here */
-const API_URL = "https://script.google.com/macros/s/AKfycbx7OCtqpFZgJsWbk68fQcUVVzd7kl-jRoxTBlczuYgtlSt5hsZJ0OsLlQ6CxzUTMEa5/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx4gmjE6aUrEFBpQM1n6mOPxVPjS1BIZ7-LflzLzPa55KoekioJr__deXnsAZ3N7G78SA/exec";
 const $ = id => document.getElementById(id);
 let role="", room="", team="", playerName="", regNo="", playerId="", state=null, poller=null, tickTimer=null, answered={}, endingRound=false;
 playerId = (crypto.randomUUID ? crypto.randomUUID() : "p"+Date.now()+"_"+Math.random().toString(36).slice(2));
@@ -80,6 +80,6 @@ function renderTimer(){
 async function showFinal(){const s=state.scores||{A:0,B:0};$("finalScoreA").textContent=s.A||0;$("finalScoreB").textContent=s.B||0;$("finalNameA").textContent=state.teams?.A?.name||"TEAM A";$("finalNameB").textContent=state.teams?.B?.name||"TEAM B";$("winner").textContent=s.A===s.B?"🤝 IT'S A DRAW!":s.A>s.B?`🏆 ${state.teams?.A?.name||"TEAM A"} WINS!`:`🏆 ${state.teams?.B?.name||"TEAM B"} WINS!`;screen("result")}
 if($("hostBtn"))$("hostBtn").onclick=async()=>{try{role="host";const d=await api("createRoom",{});room=d.room;screen("host");startPolling()}catch(e){alert(e.message)}};
 if($("joinBtn"))$("joinBtn").onclick=async()=>{try{regNo=$("regNoInput").value.trim().toUpperCase();if(!regNo)throw Error("Enter your registration number.");role="team";const joined=await api("joinPlayer",{regNo,playerId});room=joined.room;team=joined.team;playerName=joined.playerName;$("teamRoomLabel").textContent="IKON BATTLE";$("myTeamLabel").textContent=(team==="A"?"🔵 TEAM A":"🔴 TEAM B")+" • "+playerName;screen("team");startPolling()}catch(e){alert(e.message)}};
-$("startBtn").onclick=async()=>{try{await api("startRound",{room,roundIndex:state.currentRound<0?0:state.currentRound+1});await refresh()}catch(e){alert(e.message)}};
-$("nextBtn").onclick=async()=>{try{await api("startRound",{room,roundIndex:state.currentRound+1});await refresh()}catch(e){alert(e.message)}};
-$("endBtn").onclick=async()=>{if(confirm("Finish this battle?")){try{await api("finishBattle",{room});await refresh()}catch(e){alert(e.message)}}};
+if($("startBtn"))$("startBtn").onclick=async()=>{try{await api("startRound",{room,roundIndex:state.currentRound<0?0:state.currentRound+1});await refresh()}catch(e){alert(e.message)}};
+if($("nextBtn"))$("nextBtn").onclick=async()=>{try{await api("startRound",{room,roundIndex:state.currentRound+1});await refresh()}catch(e){alert(e.message)}};
+if($("endBtn"))$("endBtn").onclick=async()=>{if(confirm("Finish this battle?")){try{await api("finishBattle",{room});await refresh()}catch(e){alert(e.message)}}};
