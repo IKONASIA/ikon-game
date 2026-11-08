@@ -1,5 +1,5 @@
 /* CONFIG: paste your deployed Google Apps Script Web App URL here */
-const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL";
+const API_URL = "https://script.google.com/macros/s/AKfycbx7OCtqpFZgJsWbk68fQcUVVzd7kl-jRoxTBlczuYgtlSt5hsZJ0OsLlQ6CxzUTMEa5/exec";
 const $ = id => document.getElementById(id);
 let role="", room="", team="", playerName="", regNo="", playerId="", state=null, poller=null, tickTimer=null, answered={}, endingRound=false;
 playerId = (crypto.randomUUID ? crypto.randomUUID() : "p"+Date.now()+"_"+Math.random().toString(36).slice(2));
