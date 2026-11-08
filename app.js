@@ -171,7 +171,7 @@ function renderTask(){
 
  if(!r){
   area.textContent="Waiting…";
-  return
+  return;
  }
 
  area.innerHTML=(r.tasks||[]).map((t,i)=>taskHTML(t,i)).join("");
@@ -179,15 +179,17 @@ function renderTask(){
  r.tasks.forEach((t,i)=>{
   if(t.type==="QUIZ"){
    area.querySelectorAll(`[data-q="${i}"]`).forEach(b=>
-    b.addEventListener("click",()=>sendAnswer(i,b.dataset.answer,b))
+    b.addEventListener("click",()=>{
+     sendAnswer(i,t.taskNo,b.dataset.answer,b);
+    })
    );
   }else{
    const b=area.querySelector(`[data-submit="${i}"]`);
 
    if(b)b.onclick=()=>{
     const input=area.querySelector(`[data-input="${i}"]`);
-    sendAnswer(i,input.value,b)
-   }
+    sendAnswer(i,t.taskNo,input.value,b);
+   };
   }
  });
 }
@@ -221,13 +223,14 @@ function taskHTML(t,i){
  </article>`;
 }
 
-async function sendAnswer(taskNo,answer,button){
- if(answered[taskNo]||state.roundOver)return;
+async function sendAnswer(taskIndex,taskNo,answer,button){
+ if(answered[taskIndex]||state.roundOver)return;
 
- answered[taskNo]=true;
+ answered[taskIndex]=true;
 
- document.querySelectorAll(`[data-q="${taskNo}"],[data-submit="${taskNo}"]`)
-  .forEach(x=>x.disabled=true);
+ document.querySelectorAll(
+  `[data-q="${taskIndex}"],[data-submit="${taskIndex}"]`
+ ).forEach(x=>x.disabled=true);
 
  try{
   const res=await api("submitAnswer",{
@@ -240,16 +243,19 @@ async function sendAnswer(taskNo,answer,button){
    answer:String(answer)
   });
 
-  $("teamFeedback").textContent=res.message||"Answer submitted.";
-  await refresh()
+  $("teamFeedback").textContent=
+   res.message||"Answer submitted successfully.";
+
+  await refresh();
 
  }catch(e){
-  answered[taskNo]=false;
+  answered[taskIndex]=false;
 
-  document.querySelectorAll(`[data-q="${taskNo}"],[data-submit="${taskNo}"]`)
-   .forEach(x=>x.disabled=false);
+  document.querySelectorAll(
+   `[data-q="${taskIndex}"],[data-submit="${taskIndex}"]`
+  ).forEach(x=>x.disabled=false);
 
-  $("teamFeedback").textContent=e.message
+  $("teamFeedback").textContent=e.message;
  }
 }
 
