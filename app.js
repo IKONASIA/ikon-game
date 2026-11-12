@@ -28,8 +28,15 @@ const playerId = (
 
 function screen(id) {
   ["home", "team", "result"].forEach(x => {
-    $(x).classList.toggle("hidden", x !== id);
+    const el = $(x);
+    if (el) el.classList.toggle("hidden", x !== id);
   });
+}
+
+function setText(id, value) {
+  const el = $(id);
+  if (el) el.textContent = value;
+  else console.warn("Missing HTML element: #" + id);
 }
 
 
@@ -299,8 +306,8 @@ function render() {
 
   if (
     isTieBreaker &&
-    state.tieBreaker.answers &&
-    state.tieBreaker.answers[team]
+    Array.isArray(state.tieBreaker.answeredTeams) &&
+    state.tieBreaker.answeredTeams.includes(team)
   ) {
 
     $("feedback").textContent =
@@ -525,8 +532,7 @@ async function send(i, taskNo, answer) {
       );
 
 
-      // A successful API response is sufficient.
-      // The current Apps Script returns correct, points and message.
+      // Successful API response confirms submission.
 
       $("feedback").textContent =
         result?.message || "Answer submitted successfully.";
@@ -647,67 +653,45 @@ function renderTimer() {
 ========================= */
 
 function showFinal() {
+  const s = state.scores || { A: 0, B: 0 };
 
-  const s = state.scores || {
-    A: 0,
-    B: 0
-  };
+  setText("finalScoreA", s.A || 0);
+  setText("finalScoreB", s.B || 0);
 
+  setText(
+    "finalNameA",
+    state.teams?.A?.name || "TEAM A"
+  );
 
-  $("finalScoreA").textContent =
-    s.A || 0;
+  setText(
+    "finalNameB",
+    state.teams?.B?.name || "TEAM B"
+  );
 
-  $("finalScoreB").textContent =
-    s.B || 0;
-
-
-  $("finalNameA").textContent =
-    state.teams?.A?.name || "TEAM A";
-
-  $("finalNameB").textContent =
-    state.teams?.B?.name || "TEAM B";
-
-
-  const tbWinner =
-    state.tieBreaker?.winner || "";
-
+  const tbWinner = state.tieBreaker?.winner || "";
+  let winnerText = "";
 
   if (tbWinner === "A") {
-
-    $("winner").textContent =
-      "🏆 " +
-      (state.teams?.A?.name || "TEAM A") +
+    winnerText = "🏆 " + (state.teams?.A?.name || "TEAM A") +
       " WINS THE TIE BREAKER!";
-
   } else if (tbWinner === "B") {
-
-    $("winner").textContent =
-      "🏆 " +
-      (state.teams?.B?.name || "TEAM B") +
+    winnerText = "🏆 " + (state.teams?.B?.name || "TEAM B") +
       " WINS THE TIE BREAKER!";
-
-  } else if (
-    state.tieBreaker &&
-    !tbWinner
-  ) {
-
-    $("winner").textContent =
-      "🤝 MATCH DRAW — TIE BREAKER QUESTIONS EXHAUSTED";
-
+  } else if (state.tieBreaker) {
+    winnerText = "🤝 MATCH DRAW — TIE BREAKER QUESTIONS EXHAUSTED";
   } else {
+    const scoreA = Number(s.A || 0);
+    const scoreB = Number(s.B || 0);
 
-    $("winner").textContent =
-      s.A === s.B
-        ? "🤝 IT'S A DRAW!"
-        : s.A > s.B
-          ? "🏆 " + (state.teams?.A?.name || "TEAM A") + " WINS!"
-          : "🏆 " + (state.teams?.B?.name || "TEAM B") + " WINS!";
-
+    winnerText = scoreA === scoreB
+      ? "🤝 IT'S A DRAW!"
+      : scoreA > scoreB
+        ? "🏆 " + (state.teams?.A?.name || "TEAM A") + " WINS!"
+        : "🏆 " + (state.teams?.B?.name || "TEAM B") + " WINS!";
   }
 
-
+  setText("winner", winnerText);
   screen("result");
-
 }
 
 
