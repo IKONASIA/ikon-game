@@ -1,4 +1,3 @@
-
 const API_URL = "https://script.google.com/macros/s/AKfycbzTsW0aSYEUl14dfvcXpSP5608ALn3VMh7fw_QtA5L_8ddnnhrPIb5U-mNptvutV7WQrw/exec";
 
 const $ = id => document.getElementById(id);
@@ -8,6 +7,9 @@ let team = "";
 let playerName = "";
 let regNo = "";
 let state = null;
+
+// Server aur device clock ka difference.
+let serverTimeOffset = 0;
 
 let poller = null;
 let ticker = null;
@@ -31,12 +33,6 @@ function screen(id) {
     const el = $(x);
     if (el) el.classList.toggle("hidden", x !== id);
   });
-}
-
-function setText(id, value) {
-  const el = $(id);
-  if (el) el.textContent = value;
-  else console.warn("Missing HTML element: #" + id);
 }
 
 
@@ -177,11 +173,39 @@ async function refresh() {
 
   try {
 
+    // Capture request start time.
+    const requestStartedAt = Date.now();
+
     state = await api("getState", { room });
+
+    // Capture response received time.
+    const responseReceivedAt = Date.now();
+
+    /*
+      Synchronize with Google Apps Script server.
+
+      Midpoint calculation reduces network-delay error.
+      This makes the countdown independent of the
+      student's mobile or computer clock.
+    */
+
+    if (
+      state.serverNow !== undefined &&
+      Number.isFinite(Number(state.serverNow))
+    ) {
+
+      const clientMidpoint =
+        (requestStartedAt + responseReceivedAt) / 2;
+
+      serverTimeOffset =
+        Number(state.serverNow) - clientMidpoint;
+
+    }
 
     $("connection").textContent = "● Connected";
 
     render();
+    renderTimer();
 
   } catch (e) {
 
@@ -532,15 +556,11 @@ async function send(i, taskNo, answer) {
       );
 
 
-      // Successful API response confirms submission.
-
       $("feedback").textContent =
         result?.message || "Answer submitted successfully.";
 
 
-      if (
-        result?.teamScore !== undefined
-      ) {
+      if (result?.teamScore !== undefined) {
 
         $("teamScore").textContent =
           result.teamScore;
@@ -575,8 +595,6 @@ async function send(i, taskNo, answer) {
   }
 
 
-  // Do not unlock after an uncertain timeout.
-
   $("feedback").textContent =
     "Submission status could not be confirmed. " +
     "Please wait and check with your teacher.";
@@ -590,7 +608,7 @@ async function send(i, taskNo, answer) {
 
 
 /* =========================
-   TIMER
+   SERVER-SYNCHRONIZED TIMER
 ========================= */
 
 function renderTimer() {
@@ -626,11 +644,19 @@ function renderTimer() {
   const startedAt =
     Number(state.roundStartedAt || 0);
 
+
+  // IMPORTANT:
+  // Use adjusted server time instead of the device's own clock.
+
+  const synchronizedNow =
+    Date.now() + serverTimeOffset;
+
+
   const left = startedAt
     ? Math.max(
         0,
         Math.ceil(
-          (startedAt + duration * 1000 - Date.now()) / 1000
+          (startedAt + duration * 1000 - synchronizedNow) / 1000
         )
       )
     : duration;
@@ -652,11 +678,31 @@ function renderTimer() {
    FINAL RESULT
 ========================= */
 
-function showFinal() {
-  const s = state.scores || { A: 0, B: 0 };
+function setText(id, value) {
 
-  setText("finalScoreA", s.A || 0);
-  setText("finalScoreB", s.B || 0);
+  const el = $(id);
+
+  if (el) {
+    el.textContent = value;
+  } else {
+    console.warn("Missing HTML element: #" + id);
+  }
+
+}
+
+
+function showFinal() {
+
+  const s = state.scores || {
+    A: 0,
+    B: 0
+  };
+
+  const scoreA = Number(s.A || 0);
+  const scoreB = Number(s.B || 0);
+
+  setText("finalScoreA", scoreA);
+  setText("finalScoreB", scoreB);
 
   setText(
     "finalNameA",
@@ -668,30 +714,47 @@ function showFinal() {
     state.teams?.B?.name || "TEAM B"
   );
 
-  const tbWinner = state.tieBreaker?.winner || "";
-  let winnerText = "";
+
+  const tbWinner =
+    state.tieBreaker?.winner || "";
+
+  let winnerText;
+
 
   if (tbWinner === "A") {
-    winnerText = "🏆 " + (state.teams?.A?.name || "TEAM A") +
+
+    winnerText =
+      "🏆 " +
+      (state.teams?.A?.name || "TEAM A") +
       " WINS THE TIE BREAKER!";
+
   } else if (tbWinner === "B") {
-    winnerText = "🏆 " + (state.teams?.B?.name || "TEAM B") +
+
+    winnerText =
+      "🏆 " +
+      (state.teams?.B?.name || "TEAM B") +
       " WINS THE TIE BREAKER!";
+
   } else if (state.tieBreaker) {
-    winnerText = "🤝 MATCH DRAW — TIE BREAKER QUESTIONS EXHAUSTED";
+
+    winnerText =
+      "🤝 MATCH DRAW — TIE BREAKER QUESTIONS EXHAUSTED";
+
   } else {
-    const scoreA = Number(s.A || 0);
-    const scoreB = Number(s.B || 0);
 
     winnerText = scoreA === scoreB
       ? "🤝 IT'S A DRAW!"
       : scoreA > scoreB
         ? "🏆 " + (state.teams?.A?.name || "TEAM A") + " WINS!"
         : "🏆 " + (state.teams?.B?.name || "TEAM B") + " WINS!";
+
   }
 
+
   setText("winner", winnerText);
+
   screen("result");
+
 }
 
 
