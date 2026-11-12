@@ -1,63 +1,98 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="google-site-verification" content="5NRSpcUWetIApZ1Ph6qpKHKlnDOwj8KOBuDNObfPfP8" />
+  <meta name="google-site-verification" content="5NRSpcUWetIApZ1Ph6qpKHKlnDOwj8KOBuDNObfPfP8">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>IKON Class Quiz | IKON Institute Gaya</title>
-
-  <meta name="description" content="IKON Class Quiz - IKON Institute Gaya ka interactive online quiz and team challenge platform. Play educational quizzes, compete with teams and test your knowledge.">
-
-  <meta name="keywords" content="IKON Class Quiz, IKON Institute, IKON Brain Battle, Online Quiz Gaya, IKON Quiz">
-
+  <title>IKON Brain Battle | IKON Institute Gaya</title>
+  <meta name="description" content="IKON Brain Battle - IKON Institute Gaya's interactive team quiz and challenge platform.">
+  <meta name="keywords" content="IKON Brain Battle, IKON Institute, Online Quiz Gaya, IKON Quiz">
   <meta name="author" content="IKON Institute Gaya">
   <meta name="robots" content="index, follow">
-
   <link rel="canonical" href="https://ikonasia.github.io/ikon-game/">
-
-  <meta property="og:title" content="IKON Class Quiz | IKON Institute">
-  <meta property="og:description" content="Play, learn and compete with IKON Class Quiz.">
+  <meta property="og:title" content="IKON Brain Battle | IKON Institute">
+  <meta property="og:description" content="Think fast, work smart and win together.">
   <meta property="og:url" content="https://ikonasia.github.io/ikon-game/">
   <meta property="og:type" content="website">
-
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-<header>IKON INSTITUTE • BRAIN BATTLE <span id="connection">Connecting…</span></header>
-<main>
-<section id="home" class="panel">
- <div class="hero"><small>THINK FAST • WORK SMART • WIN TOGETHER</small><h1>IKON BRAIN BATTLE</h1><p>Two teams. Different challenges. One champion.</p></div>
- <div class="join"><h2>Student Login</h2><label for="reg">Registration Number</label><input id="reg" placeholder="Enter your Registration Number" autocomplete="off"><button id="joinBtn">JOIN BATTLE</button><p id="loginMessage">Enter your Registration Number to join your assigned team.</p></div>
-</section>
-<section id="team" class="panel hidden">
- <div class="teamhead"><h2 id="teamTitle">Waiting for game to start…</h2><b id="teamName"></b></div>
- <div class="score">Team Score: <strong id="teamScore">0</strong></div>
- <div class="timer" id="teamTimer">--:--</div><div class="progress"><i id="teamProgress"></i></div>
- <div id="tasks"></div><p id="feedback"></p>
-</section>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="IKON Institute">
+      <span class="brand-mark">I</span>
+      <span><b>IKON INSTITUTE</b><small>BRAIN BATTLE</small></span>
+    </a>
+    <div class="connection-wrap"><span class="live-dot"></span><span id="connection">Connecting…</span></div>
+  </header>
 
-<section id="result" class="panel hidden">
+  <main>
+    <section id="home" class="panel home-panel">
+      <div class="hero">
+        <div class="eyebrow"><span></span> THINK FAST&nbsp; • &nbsp;WORK SMART&nbsp; • &nbsp;WIN TOGETHER</div>
+        <div class="hero-emblem">⚡</div>
+        <h1>IKON <span>BRAIN BATTLE</span></h1>
+        <p>Two teams. Different challenges. One champion.</p>
+      </div>
+      <div class="join-card">
+        <div class="join-icon">↗</div>
+        <div class="join-heading"><span class="section-kicker">PLAYER ACCESS</span><h2>Join the battle</h2><p>Enter your registration number to enter your assigned team.</p></div>
+        <label for="reg">REGISTRATION NUMBER</label>
+        <input id="reg" placeholder="e.g. IKON2026001" autocomplete="off">
+        <button id="joinBtn" class="primary-btn">JOIN BATTLE <span>→</span></button>
+        <p id="loginMessage" class="status-message">Your team will be assigned automatically.</p>
+      </div>
+      <div class="home-foot"><span>SECURE PLAYER LOGIN</span><span>POWERED BY IKON INSTITUTE</span></div>
+    </section>
 
-  <h1>🏆 FINAL RESULT</h1>
+    <section id="team" class="panel game-panel hidden">
+      <div class="game-topline"><span class="section-kicker">LIVE CHALLENGE</span><span class="live-label"><i></i> LIVE BATTLE</span></div>
+      <div class="teamhead"><div><h2 id="teamTitle">Waiting for game to start…</h2><p id="teamName" class="team-identity"></p></div><div class="score-chip">TEAM SCORE <strong id="teamScore">0</strong></div></div>
+      <div class="timer-card"><div><span class="section-kicker">TIME REMAINING</span><div class="timer" id="teamTimer">--:--</div></div><div class="timer-ring">⚡</div></div>
+      <div class="progress"><i id="teamProgress"></i></div>
+      <div id="tasks"></div>
+      <p id="feedback" class="feedback"></p>
+    </section>
 
-  <div class="finalscores">
+    <section id="result" class="panel result-panel hidden">
+      <div class="result-heading">
+        <div class="result-icon">🏆</div>
+        <div class="section-kicker">BATTLE COMPLETED</div>
+        <h1>FINAL <span>LEADERBOARD</span></h1>
+        <p>The challenge is over. Here are the champions and individual performances.</p>
+      </div>
 
-    <div>
-      <span id="finalNameA">TEAM A</span>
-      <strong id="finalScoreA">0</strong>
-    </div>
+      <div class="winner-banner"><span>🏆</span><h2 id="winner"></h2></div>
 
-    <div>
-      <span id="finalNameB">TEAM B</span>
-      <strong id="finalScoreB">0</strong>
-    </div>
+      <div class="scoreboard-grid">
+        <article class="team-score-card team-a-card">
+          <div class="team-card-top"><span class="team-symbol">A</span><span class="team-caption">TEAM TOTAL</span></div>
+          <h3 id="finalNameA">TEAM A</h3><strong id="finalScoreA" class="team-total">0</strong><small>POINTS</small>
+        </article>
+        <article class="team-score-card team-b-card">
+          <div class="team-card-top"><span class="team-symbol">B</span><span class="team-caption">TEAM TOTAL</span></div>
+          <h3 id="finalNameB">TEAM B</h3><strong id="finalScoreB" class="team-total">0</strong><small>POINTS</small>
+        </article>
+      </div>
 
-  </div>
+      <div class="section-title-row"><div><span class="section-kicker">INDIVIDUAL HONOURS</span><h2>Top performers</h2></div><span class="mini-note">Highest scorer from each team</span></div>
+      <div id="topPerformers" class="mvp-grid"></div>
 
-  <h2 id="winner"></h2>
-
-</section>
-div>TEAM B<strong id="finalB">0</strong></div></div><h2 id="winner"></h2></section>
-</main><footer>IKON INSTITUTE • A SYMBOL OF SUCCESS</footer><script src="app.js"></script></body></html>
+      <div class="section-title-row stats-title"><div><span class="section-kicker">PLAYER BREAKDOWN</span><h2>Individual team rankings</h2></div></div>
+      <div class="member-stats">
+        <div><span>PLAYERS</span><strong id="totalMembers">0</strong></div>
+        <div><span>ANSWER ATTEMPTS</span><strong id="totalAttempts">0</strong></div>
+      </div>
+      <div class="members-grid">
+        <article class="members-card"><div class="members-heading"><span class="team-symbol team-symbol-a">A</span><div><h3 id="membersTitleA">TEAM A</h3><small>PLAYER RANKING</small></div></div><div id="membersA"></div></article>
+        <article class="members-card"><div class="members-heading"><span class="team-symbol team-symbol-b">B</span><div><h3 id="membersTitleB">TEAM B</h3><small>PLAYER RANKING</small></div></div><div id="membersB"></div></article>
+      </div>
+      <div class="result-footer">IKON INSTITUTE <span>•</span> A SYMBOL OF SUCCESS</div>
+    </section>
+  </main>
+  <footer>IKON INSTITUTE <span>•</span> A SYMBOL OF SUCCESS</footer>
+  <script src="app.js"></script>
+</body>
+</html>
