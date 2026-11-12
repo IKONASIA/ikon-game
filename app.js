@@ -827,4 +827,4 @@ $("reg").addEventListener(
       join();
     }
   }
-);
+);  
