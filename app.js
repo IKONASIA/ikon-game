@@ -59,12 +59,48 @@ function taskHTML(t,i){
  const hint=type==="SCRAMBLE"?"Unscramble the word":type==="MEMORY"?"Enter what you remember":"Enter your answer";
  return `<article class="task"><small>TASK ${i+1} • ${safe(type)}</small><h3>${safe(t.prompt)}</h3><input data-input="${i}" placeholder="${hint}"><button data-submit="${i}">SUBMIT ANSWER</button></article>`;
 }
-async function send(i,taskNo,answer){
- if(answered[i]||state.roundOver)return;answered[i]=true;
- document.querySelectorAll(`[data-q="${i}"],[data-submit="${i}"]`).forEach(x=>x.disabled=true);
- try{const r=await api("submitAnswer",{room,team,playerName,regNo,playerId,taskNo,answer:String(answer)});$("feedback").textContent=r.message||"Answer submitted.";await refresh();}
- catch(e){answered[i]=false;document.querySelectorAll(`[data-q="${i}"],[data-submit="${i}"]`).forEach(x=>x.disabled=false);$("feedback").textContent=e.message;}
+
+async function send(i, taskNo, answer) {
+  if (answered[i] || state.roundOver) return;
+
+  const buttons = document.querySelectorAll(
+    `[data-q="${i}"],[data-submit="${i}"]`
+  );
+
+  answered[i] = true;
+
+  buttons.forEach(b => b.disabled = true);
+
+  $("feedback").textContent = "Submitting answer...";
+
+  try {
+    const result = await api("submitAnswer", {
+      room,
+      team,
+      playerName,
+      regNo,
+      playerId,
+      taskNo: Number(taskNo),
+      answer: String(answer).trim()
+    });
+
+    $("feedback").textContent = result.message;
+
+    if (result.teamScore !== undefined) {
+      $("teamScore").textContent = result.teamScore;
+    }
+
+    await refresh();
+
+  } catch (e) {
+    answered[i] = false;
+
+    buttons.forEach(b => b.disabled = false);
+
+    $("feedback").textContent = e.message;
+  }
 }
+
 function renderTimer(){
  if(!state||Number(state.currentRound)<0||state.finished)return;
  const r=state.rounds[state.currentRound];if(!r)return;
