@@ -423,79 +423,94 @@ function renderTasks(r) {
    TASK HTML
 ========================= */
 
+function driveImageUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  // Accept Google Drive share links, file URLs, or an already direct HTTPS image URL.
+  const idMatch = raw.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?[^#]*id=)([a-zA-Z0-9_-]+)/);
+  if (idMatch) return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(idMatch[1])}`;
+  if (/^https:\/\//i.test(raw)) return raw;
+  return '';
+}
+
 function taskHTML(t, i) {
-
-  const type = String(
-    t.type || "TEXT"
-  ).toUpperCase();
-
+  const type = String(t.type || "TEXT").toUpperCase();
+  const taskLabel = state.tieBreaker?.active
+    ? "⚡ TIE BREAKER QUESTION"
+    : `TASK ${i + 1}`;
 
   if (type === "QUIZ") {
-
     return `
-      <article class="task">
-
-        <small>
-          ${state.tieBreaker?.active
-            ? "⚡ TIE BREAKER QUESTION"
-            : "TASK " + (i + 1)
-          }
-        </small>
-
+      <article class="task task-premium">
+        <small>${taskLabel}</small>
         <h3>${safe(t.prompt)}</h3>
-
         <div class="answers">
-
           ${(t.options || []).map((o, n) => `
-
-            <button
-              class="answer"
-              data-q="${i}"
-              data-answer="${safe(o)}">
-
-              ${"ABCD"[n] || n + 1}.
-              ${safe(o)}
-
+            <button class="answer" data-q="${i}" data-answer="${safe(o)}">
+              <span class="answer-letter">${"ABCD"[n] || n + 1}</span>
+              <span>${safe(o)}</span>
             </button>
-
           `).join("")}
-
         </div>
-
-      </article>
-    `;
-
+      </article>`;
   }
 
+  if (type === "LOGO") {
+    const imageUrl = driveImageUrl(t.prompt);
+    return `
+      <article class="task task-premium logo-task">
+        <small>${taskLabel} • GUESS THE LOGO</small>
+        <h3>Which brand does this logo belong to?</h3>
+        ${imageUrl
+          ? `<div class="logo-image-frame"><img class="guess-logo-image" src="${safe(imageUrl)}" alt="Guess the brand logo" referrerpolicy="no-referrer" onerror="this.closest('.logo-image-frame').innerHTML='<p class=logo-image-error>Logo image could not be loaded. Please check the Google Drive sharing permission.</p>'"></div>`
+          : `<p class="logo-image-error">Logo image link is missing or invalid. Add a Google Drive image link in the Tasks sheet Prompt column.</p>`}
+        <p class="task-hint">Look carefully and enter the brand name.</p>
+        <input data-input="${i}" autocomplete="off" placeholder="Enter brand / company name">
+        <button class="primary-submit" data-submit="${i}">SUBMIT ANSWER</button>
+      </article>`;
+  }
 
-  const hint =
-    type === "SCRAMBLE"
-      ? "Unscramble the word"
-      : type === "MEMORY"
-        ? "Enter what you remember"
-        : "Enter your answer";
+  if (type === "MEMORY") {
+    return `
+      <article class="task task-premium memory-task">
+        <small>${taskLabel} • 5 SECOND MEMORY CHALLENGE</small>
+        <h3>Memorise the word before it disappears</h3>
+        <div class="memory-display" data-memory-display="${i}">
+          <span class="memory-caption">REMEMBER THIS</span>
+          <strong class="memory-word">${safe(t.prompt)}</strong>
+          <span class="memory-countdown">VISIBLE FOR 5 SECONDS</span>
+        </div>
+        <p class="memory-hidden-note" data-memory-hidden="${i}" hidden>Time's up! The word is hidden. Type what you remember.</p>
+        <input data-input="${i}" autocomplete="off" placeholder="Type the word you remember">
+        <button class="primary-submit" data-submit="${i}">SUBMIT ANSWER</button>
+      </article>`;
+  }
 
-
+  const hint = type === "SCRAMBLE" ? "Unscramble the word" : "Enter your answer";
   return `
-    <article class="task">
-
-      <small>
-        TASK ${i + 1} • ${safe(type)}
-      </small>
-
+    <article class="task task-premium">
+      <small>${taskLabel} • ${safe(type)}</small>
       <h3>${safe(t.prompt)}</h3>
+      <input data-input="${i}" autocomplete="off" placeholder="${hint}">
+      <button class="primary-submit" data-submit="${i}">SUBMIT ANSWER</button>
+    </article>`;
+}
 
-      <input
-        data-input="${i}"
-        placeholder="${hint}">
-
-      <button data-submit="${i}">
-        SUBMIT ANSWER
-      </button>
-
-    </article>
-  `;
-
+function updateMemoryReveal() {
+  if (!state || state.finished || state.tieBreaker?.active) return;
+  const idx = Number(state.currentRound ?? -1);
+  const round = state.rounds?.[idx];
+  if (!round || Number(round.roundNo) !== 4) return;
+  const startedAt = Number(state.roundStartedAt || 0);
+  if (!startedAt) return;
+  const elapsed = Date.now() + serverTimeOffset - startedAt;
+  const visible = elapsed < 5000;
+  document.querySelectorAll('[data-memory-display]').forEach(el => {
+    el.hidden = !visible;
+  });
+  document.querySelectorAll('[data-memory-hidden]').forEach(el => {
+    el.hidden = visible;
+  });
 }
 
 
@@ -671,6 +686,8 @@ function renderTimer() {
   $("teamProgress").style.width =
     Math.max(0, left / duration * 100) + "%";
 
+  updateMemoryReveal();
+
 }
 
 
@@ -692,71 +709,106 @@ function setText(id, value) {
 
 
 function showFinal() {
-
-  const s = state.scores || {
-    A: 0,
-    B: 0
-  };
-
+  const s = state.scores || { A: 0, B: 0 };
   const scoreA = Number(s.A || 0);
   const scoreB = Number(s.B || 0);
 
   setText("finalScoreA", scoreA);
   setText("finalScoreB", scoreB);
+  setText("finalNameA", state.teams?.A?.name || "TEAM A");
+  setText("finalNameB", state.teams?.B?.name || "TEAM B");
+  setText("membersTitleA", state.teams?.A?.name || "TEAM A");
+  setText("membersTitleB", state.teams?.B?.name || "TEAM B");
 
-  setText(
-    "finalNameA",
-    state.teams?.A?.name || "TEAM A"
-  );
-
-  setText(
-    "finalNameB",
-    state.teams?.B?.name || "TEAM B"
-  );
-
-
-  const tbWinner =
-    state.tieBreaker?.winner || "";
-
+  const tbWinner = state.tieBreaker?.winner || "";
   let winnerText;
 
-
   if (tbWinner === "A") {
-
-    winnerText =
-      "🏆 " +
-      (state.teams?.A?.name || "TEAM A") +
-      " WINS THE TIE BREAKER!";
-
+    winnerText = "🏆 " + (state.teams?.A?.name || "TEAM A") + " WINS THE TIE BREAKER!";
   } else if (tbWinner === "B") {
-
-    winnerText =
-      "🏆 " +
-      (state.teams?.B?.name || "TEAM B") +
-      " WINS THE TIE BREAKER!";
-
+    winnerText = "🏆 " + (state.teams?.B?.name || "TEAM B") + " WINS THE TIE BREAKER!";
   } else if (state.tieBreaker) {
-
-    winnerText =
-      "🤝 MATCH DRAW — TIE BREAKER QUESTIONS EXHAUSTED";
-
+    winnerText = "🤝 MATCH DRAW — TIE BREAKER QUESTIONS EXHAUSTED";
   } else {
-
     winnerText = scoreA === scoreB
       ? "🤝 IT'S A DRAW!"
       : scoreA > scoreB
         ? "🏆 " + (state.teams?.A?.name || "TEAM A") + " WINS!"
         : "🏆 " + (state.teams?.B?.name || "TEAM B") + " WINS!";
-
   }
-
 
   setText("winner", winnerText);
 
+  const individual = state.individualScores || { A: [], B: [] };
+  const allMembers = [...(individual.A || []), ...(individual.B || [])]
+    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+
+  const topA = (individual.A || [])[0];
+  const topB = (individual.B || [])[0];
+
+  const topHTML = (member, teamLabel, teamClass) => member ? `
+    <article class="mvp-card ${teamClass}">
+      <div class="mvp-crown">♛</div>
+      <span class="mvp-label">${safe(teamLabel)} • TOP SCORER</span>
+      <strong>${safe(member.name)}</strong>
+      <span class="mvp-reg">${safe(member.regNo)}</span>
+      <b>${Number(member.score || 0)} <small>PTS</small></b>
+    </article>` : `
+    <article class="mvp-card ${teamClass}">
+      <span class="mvp-label">${safe(teamLabel)}</span>
+      <strong>No player data</strong>
+      <b>0 <small>PTS</small></b>
+    </article>`;
+
+  const mvpArea = $("topPerformers");
+  if (mvpArea) {
+    mvpArea.innerHTML =
+      topHTML(topA, state.teams?.A?.name || "TEAM A", "mvp-a") +
+      topHTML(topB, state.teams?.B?.name || "TEAM B", "mvp-b");
+  }
+
+  const makeTable = (teamKey) => {
+    const list = individual[teamKey] || [];
+    if (!list.length) {
+      return `<div class="empty-members">No joined member records found.</div>`;
+    }
+
+    return `
+      <div class="member-table-wrap">
+        <table class="member-table">
+          <thead><tr>
+            <th>RANK</th><th>TEAM MEMBER</th><th>REG. NO.</th><th>ATTEMPTS</th><th>SCORE</th>
+          </tr></thead>
+          <tbody>
+            ${list.map(m => `
+              <tr class="${Number(m.rank) === 1 ? "rank-first" : ""}">
+                <td><span class="rank-pill">${Number(m.rank) === 1 ? "🥇" : "#" + Number(m.rank)}</span></td>
+                <td><strong>${safe(m.name)}</strong></td>
+                <td>${safe(m.regNo)}</td>
+                <td>${Number(m.attempts || 0)}</td>
+                <td><strong class="member-points">${Number(m.score || 0)}</strong></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  };
+
+  const memberA = $("membersA");
+  const memberB = $("membersB");
+  if (memberA) memberA.innerHTML = makeTable("A");
+  if (memberB) memberB.innerHTML = makeTable("B");
+
+  const totalMembers = $("totalMembers");
+  if (totalMembers) totalMembers.textContent = allMembers.length;
+
+  const totalAttempts = $("totalAttempts");
+  if (totalAttempts) {
+    totalAttempts.textContent = allMembers.reduce((n, m) => n + Number(m.attempts || 0), 0);
+  }
+
   screen("result");
-
 }
-
 
 /* =========================
    EVENTS
