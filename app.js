@@ -474,24 +474,29 @@ function advanceMemoryTask() {
    TASK HTML
 ========================= */
 
+
 function driveImageUrl(value) {
   const raw = String(value || "").trim();
 
   if (!raw) return "";
 
+  // Extract Google Drive file ID from different Drive URL formats.
   const idMatch = raw.match(
-    /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?[^#]*id=)([a-zA-Z0-9_-]+)/
+    /(?:drive\.google\.com\/thumbnail\?id=|drive\.google\.com\/uc\?[^#]*id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=)([a-zA-Z0-9_-]+)/
   );
 
   if (idMatch) {
-    return "https://drive.google.com/uc?export=view&id=" +
-      encodeURIComponent(idMatch[1]);
+    return "https://drive.google.com/thumbnail?id=" +
+      encodeURIComponent(idMatch[1]) + "&sz=w1000";
   }
 
-  if (/^https:\/\//i.test(raw)) return raw;
+  if (/^https:\/\//i.test(raw)) {
+    return raw;
+  }
 
   return "";
 }
+
 
 
 function taskHTML(t, i) {
@@ -524,50 +529,47 @@ function taskHTML(t, i) {
       </article>`;
   }
 
-  if (type === "LOGO") {
-    const imageUrl = driveImageUrl(t.prompt);
+ 
+if (type === "LOGO") {
+  const imageUrl = driveImageUrl(t.prompt);
 
-    return `
-      <article class="task task-premium logo-task">
-        <small>${taskLabel} • GUESS THE LOGO</small>
+  return `
+    <article class="task task-premium logo-task">
+      <small>${taskLabel} • GUESS THE LOGO</small>
+      <h3>Which brand does this logo belong to?</h3>
 
-        <h3>Which brand does this logo belong to?</h3>
+      ${imageUrl
+        ? `
+          <div class="logo-image-frame">
+            <img
+              class="guess-logo-image"
+              src="${safe(imageUrl)}"
+              alt="Guess the brand logo"
+              referrerpolicy="no-referrer"
+              onerror="this.onerror=null;this.parentElement.innerHTML='<p class=logo-image-error>Logo could not load. Please contact your teacher.</p>';"
+            >
+          </div>
+        `
+        : `
+          <p class="logo-image-error">
+            Logo file not found. Please check the Tasks sheet filename.
+          </p>
+        `
+      }
 
-        ${imageUrl
-          ? `
-            <div class="logo-image-frame">
-              <img
-                class="guess-logo-image"
-                src="${safe(imageUrl)}"
-                alt="Guess the brand logo"
-                referrerpolicy="no-referrer"
-                onerror="this.closest('.logo-image-frame').innerHTML='<p class=logo-image-error>Logo image could not be loaded. Please check the Google Drive sharing permission.</p>'"
-              >
-            </div>
-          `
-          : `
-            <p class="logo-image-error">
-              Logo not found. Check the filename in Tasks → Prompt
-              and ensure the image is uploaded to the shared logo folder.
-            </p>
-          `
-        }
+      <p class="task-hint">
+        Look carefully and enter the brand name.
+      </p>
 
-        <p class="task-hint">
-          Look carefully and enter the brand name.
-        </p>
+      <input data-input="${i}" autocomplete="off"
+        placeholder="Enter brand / company name">
 
-        <input
-          data-input="${i}"
-          autocomplete="off"
-          placeholder="Enter brand / company name"
-        >
+      <button class="primary-submit" data-submit="${i}">
+        SUBMIT ANSWER
+      </button>
+    </article>`;
+}
 
-        <button class="primary-submit" data-submit="${i}">
-          SUBMIT ANSWER
-        </button>
-      </article>`;
-  }
 
   if (type === "MEMORY") {
     return `
