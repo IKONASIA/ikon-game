@@ -463,7 +463,7 @@ function taskHTML(t, i) {
         <h3>Which brand does this logo belong to?</h3>
         ${imageUrl
           ? `<div class="logo-image-frame"><img class="guess-logo-image" src="${safe(imageUrl)}" alt="Guess the brand logo" referrerpolicy="no-referrer" onerror="this.closest('.logo-image-frame').innerHTML='<p class=logo-image-error>Logo image could not be loaded. Please check the Google Drive sharing permission.</p>'"></div>`
-          : `<p class="logo-image-error">Logo image link is missing or invalid. Add a Google Drive image link in the Tasks sheet Prompt column.</p>`}
+          : `<p class="logo-image-error">Logo not found. Check the filename in Tasks → Prompt and ensure the image is uploaded to the shared IKON Brain Battle Logos folder.</p>`}
         <p class="task-hint">Look carefully and enter the brand name.</p>
         <input data-input="${i}" autocomplete="off" placeholder="Enter brand / company name">
         <button class="primary-submit" data-submit="${i}">SUBMIT ANSWER</button>
