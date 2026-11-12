@@ -1,5 +1,18 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IKON Brain Battle</title><link rel="stylesheet" href="style.css"></head><body><header>IKON INSTITUTE • BRAIN BATTLE <span id="connection"></span></header><main>
-<section id="home" class="panel"><h1>IKON BRAIN BATTLE</h1><div class="grid"><div><h2>Student Login</h2><input id="reg" placeholder="Registration Number"><button id="joinBtn">JOIN BATTLE</button></div><div><h2>Admin Login</h2><input id="room" placeholder="Room code from Control!B3"><input id="pin" type="password" placeholder="Admin PIN from Control!B8"><button id="adminBtn">OPEN ADMIN</button></div></div><p>Teacher: set Control!B2 to YES to create a battle.</p></section>
-<section id="admin" class="panel hidden"><h2>Admin Dashboard • <span id="adminRoom"></span></h2><h3 id="adminStatus"></h3><div class="grid"><div>TEAM A: <b id="countA">0</b> joined <h2 id="scoreA">0</h2><ul id="rosterA"></ul></div><div>TEAM B: <b id="countB">0</b> joined <h2 id="scoreB">0</h2><ul id="rosterB"></ul></div></div><button id="startGameBtn" disabled>START GAME</button><button id="endBtn">FINISH BATTLE</button></section>
-<section id="team" class="panel hidden"><h2 id="teamTitle">Waiting for admin</h2><h3>Team score: <span id="teamScore">0</span></h3><div id="tasks"></div><p id="feedback"></p><h3>YOUR TEAM LIVE ANSWERS</h3><div id="teamBoard"></div></section>
-<section id="result" class="panel hidden"><h1>FINAL RESULT</h1><h2>Team A: <span id="finalA"></span> | Team B: <span id="finalB"></span></h2><h1 id="winner"></h1></section></main><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IKON Brain Battle</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header>IKON INSTITUTE • BRAIN BATTLE <span id="connection">Connecting…</span></header>
+<main>
+<section id="home" class="panel">
+ <div class="hero"><small>THINK FAST • WORK SMART • WIN TOGETHER</small><h1>IKON BRAIN BATTLE</h1><p>Two teams. Different challenges. One champion.</p></div>
+ <div class="join"><h2>Student Login</h2><label for="reg">Registration Number</label><input id="reg" placeholder="Enter your Registration Number" autocomplete="off"><button id="joinBtn">JOIN BATTLE</button><p id="loginMessage">Enter your Registration Number to join your assigned team.</p></div>
+</section>
+<section id="team" class="panel hidden">
+ <div class="teamhead"><h2 id="teamTitle">Waiting for game to start…</h2><b id="teamName"></b></div>
+ <div class="score">Team Score: <strong id="teamScore">0</strong></div>
+ <div class="timer" id="teamTimer">--:--</div><div class="progress"><i id="teamProgress"></i></div>
+ <div id="tasks"></div><p id="feedback"></p>
+</section>
+<section id="result" class="panel hidden"><h1>🏆 FINAL RESULT</h1><div class="finalscores"><div>TEAM A<strong id="finalA">0</strong></div><div>TEAM B<strong id="finalB">0</strong></div></div><h2 id="winner"></h2></section>
+</main><footer>IKON INSTITUTE • A SYMBOL OF SUCCESS</footer><script src="app.js"></script></body></html>
