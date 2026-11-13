@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbzMoP6MZ8MOpgAusiIbLuKSEabCmQv-PhZ3k7P_FCxljNRez0pRR678YcXeQJj2tXce0g/exechttps://script.google.com/macros/s/AKfycbwvNIwk-uYMg5t5_-A8kn9WAVgW8lw4Zt-d6gGoNtx5aAcBWZ4-RLOGOZe9aWvFqESGeg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzMoP6MZ8MOpgAusiIbLuKSEabCmQv-PhZ3k7P_FCxljNRez0pRR678YcXeQJj2tXce0g/exec";
 const $ = id => document.getElementById(id);
 
 let room = "";
