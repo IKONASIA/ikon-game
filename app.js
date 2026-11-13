@@ -1,3 +1,4 @@
+
 const API_URL = "https://script.google.com/macros/s/AKfycbzTsW0aSYEUl14dfvcXpSP5608ALn3VMh7fw_QtA5L_8ddnnhrPIb5U-mNptvutV7WQrw/exec";
 
 const $ = id => document.getElementById(id);
@@ -16,11 +17,8 @@ let ticker = null;
 let answered = {};
 let renderedRound = "";
 
-// Round 4 sequential memory challenge
-let memoryTaskIndex = 0;
-let memoryRevealTimer = null;
-let memoryCountdownTimer = null;
-let memorySubmitting = false;
+// Round 4 riddle challenge selection
+let riddleSelections = {};
 
 const playerId = (
   crypto.randomUUID
@@ -268,9 +266,7 @@ function render() {
   if (renderedRound !== currentKey) {
     renderedRound = currentKey;
     answered = {};
-    memoryTaskIndex = 0;
-    memorySubmitting = false;
-    clearMemoryTimers();
+    riddleSelections = {};
 
     renderTasks(r);
   }
@@ -302,34 +298,101 @@ function render() {
 function renderTasks(r) {
   const area = $("tasks");
 
-  const isMemoryRound =
+  const isRiddleRound =
     Number(r.roundNo) === 4 ||
-    String(r.type || "").toUpperCase() === "MEMORY";
-
-  if (isMemoryRound) {
-    memoryTaskIndex = 0;
-    renderMemoryTask(r);
-    return;
-  }
+    String(r.type || "").toUpperCase() === "RIDDLE";
 
   area.innerHTML = (r.tasks || [])
-    .map((t, i) => taskHTML(t, i))
+    .map((t, i) => taskHTML(t, i, isRiddleRound))
     .join("");
 
   (r.tasks || []).forEach((t, i) => {
+
+    // ROUND 4: RIDDLE MCQ
+    if (isRiddleRound) {
+
+      const optionButtons = area.querySelectorAll(
+        `[data-riddle-option="${i}"]`
+      );
+
+      const submitButton = area.querySelector(
+        `[data-riddle-submit="${i}"]`
+      );
+
+      optionButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+
+          // Once selected, selection cannot be changed.
+          if (
+            riddleSelections[i] !== undefined ||
+            answered[i]
+          ) return;
+
+          riddleSelections[i] = btn.dataset.answer;
+
+          optionButtons.forEach(option => {
+            option.disabled = true;
+
+            option.classList.toggle(
+              "selected",
+              option === btn
+            );
+
+            option.setAttribute(
+              "aria-pressed",
+              option === btn ? "true" : "false"
+            );
+          });
+
+          if (submitButton) {
+            submitButton.disabled = false;
+          }
+
+          $("feedback").textContent =
+            "Option selected. Press SUBMIT ANSWER to submit.";
+        });
+      });
+
+      if (submitButton) {
+        submitButton.disabled = true;
+
+        submitButton.addEventListener("click", () => {
+
+          if (riddleSelections[i] === undefined) {
+            $("feedback").textContent =
+              "Please select one option first.";
+            return;
+          }
+
+          send(i, t.taskNo, riddleSelections[i]);
+        });
+      }
+
+      return;
+    }
+
+    // OTHER QUIZ ROUNDS
     if (String(t.type).toUpperCase() === "QUIZ") {
+
       area.querySelectorAll(`[data-q="${i}"]`).forEach(btn => {
         btn.addEventListener("click", () => {
           send(i, t.taskNo, btn.dataset.answer);
         });
       });
+
     } else {
+
       const btn = area.querySelector(`[data-submit="${i}"]`);
 
       if (btn) {
         btn.onclick = () => {
           const input = area.querySelector(`[data-input="${i}"]`);
-          send(i, t.taskNo, input ? input.value : "");
+
+          send(
+            i,
+            t.taskNo,
+            input ? input.value : ""
+          );
         };
       }
     }
@@ -338,149 +401,14 @@ function renderTasks(r) {
 
 
 /* =========================
-   MEMORY TIMER CLEANUP
-========================= */
-
-function clearMemoryTimers() {
-  if (memoryRevealTimer) {
-    clearTimeout(memoryRevealTimer);
-  }
-
-  if (memoryCountdownTimer) {
-    clearInterval(memoryCountdownTimer);
-  }
-
-  memoryRevealTimer = null;
-  memoryCountdownTimer = null;
-}
-/* =========================
-   ROUND 4 - SEQUENTIAL MEMORY
-========================= */
-
-function renderMemoryTask(r) {
-  const area = $("tasks");
-  const tasks = Array.isArray(r.tasks) ? r.tasks : [];
-
-  clearMemoryTimers();
-  memorySubmitting = false;
-
-  if (memoryTaskIndex >= tasks.length) {
-    area.innerHTML = `
-      <article class="task task-premium memory-task">
-        <small>ROUND 4 • COMPLETED</small>
-        <h3>All Memory Questions Completed!</h3>
-        <p class="task-hint">
-          You have answered all the memory questions.
-          Please wait for the next round.
-        </p>
-      </article>`;
-
-    $("feedback").textContent =
-      "All memory questions completed. Waiting for the next round…";
-
-    return;
-  }
-
-  const task = tasks[memoryTaskIndex];
-  const index = memoryTaskIndex;
-
-  answered = {};
-
-  area.innerHTML = taskHTML(task, index);
-
-  const input = area.querySelector(`[data-input="${index}"]`);
-  const button = area.querySelector(`[data-submit="${index}"]`);
-  const display = area.querySelector(`[data-memory-display="${index}"]`);
-  const hiddenNote = area.querySelector(`[data-memory-hidden="${index}"]`);
-  const countdown = area.querySelector(".memory-countdown");
-
-  if (input) input.disabled = true;
-  if (button) button.disabled = true;
-  if (display) display.hidden = false;
-  if (hiddenNote) hiddenNote.hidden = true;
-
-  let secondsLeft = 5;
-
-  if (countdown) {
-    countdown.textContent = "VISIBLE FOR 5 SECONDS";
-  }
-
-  memoryCountdownTimer = setInterval(() => {
-    secondsLeft--;
-
-    if (countdown && secondsLeft > 0) {
-      countdown.textContent =
-        `VISIBLE FOR ${secondsLeft} SECONDS`;
-    }
-  }, 1000);
-
-  memoryRevealTimer = setTimeout(() => {
-    if (memoryCountdownTimer) {
-      clearInterval(memoryCountdownTimer);
-    }
-
-    memoryCountdownTimer = null;
-    memoryRevealTimer = null;
-
-    if (display) display.hidden = true;
-    if (hiddenNote) hiddenNote.hidden = false;
-
-    if (input) {
-      input.disabled = false;
-      input.focus();
-    }
-
-    if (button) button.disabled = false;
-
-  }, 5000);
-
-  if (button) {
-    button.onclick = () => {
-      send(
-        index,
-        task.taskNo,
-        input ? input.value : ""
-      );
-    };
-  }
-
-  if (input) {
-    input.addEventListener("keydown", event => {
-      if (
-        event.key === "Enter" &&
-        !input.disabled &&
-        button &&
-        !button.disabled
-      ) {
-        button.click();
-      }
-    });
-  }
-}
-
-
-function advanceMemoryTask() {
-  const idx = Number(state?.currentRound ?? -1);
-  const round = state?.rounds?.[idx];
-
-  if (!round || Number(round.roundNo) !== 4) return;
-
-  memoryTaskIndex++;
-  renderMemoryTask(round);
-}
-
-
-/* =========================
    TASK HTML
 ========================= */
-
 
 function driveImageUrl(value) {
   const raw = String(value || "").trim();
 
   if (!raw) return "";
 
-  // Extract Google Drive file ID from different Drive URL formats.
   const idMatch = raw.match(
     /(?:drive\.google\.com\/thumbnail\?id=|drive\.google\.com\/uc\?[^#]*id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=)([a-zA-Z0-9_-]+)/
   );
@@ -498,18 +426,60 @@ function driveImageUrl(value) {
 }
 
 
-
-function taskHTML(t, i) {
+function taskHTML(t, i, isRiddleRound = false) {
   const type = String(t.type || "TEXT").toUpperCase();
 
   const taskLabel = state.tieBreaker?.active
     ? "⚡ TIE BREAKER QUESTION"
     : `TASK ${i + 1}`;
 
+  // ROUND 4 RIDDLE
+  if (isRiddleRound || type === "RIDDLE") {
+    return `
+      <article class="task task-premium riddle-task">
+        <small>${taskLabel} • RIDDLE CHALLENGE</small>
+
+        <h3>${safe(t.prompt)}</h3>
+
+        <p class="task-hint">
+          Select one answer. Once selected, it cannot be changed.
+        </p>
+
+        <div class="answers riddle-answers">
+          ${(t.options || []).map((o, n) => `
+            <button
+              type="button"
+              class="answer riddle-option"
+              data-riddle-option="${i}"
+              data-answer="${safe(o)}"
+              aria-pressed="false"
+            >
+              <span class="answer-letter">
+                ${"ABCD"[n] || n + 1}
+              </span>
+
+              <span>${safe(o)}</span>
+            </button>
+          `).join("")}
+        </div>
+
+        <button
+          type="button"
+          class="primary-submit"
+          data-riddle-submit="${i}"
+          disabled
+        >
+          SUBMIT ANSWER
+        </button>
+      </article>`;
+  }
+
+  // NORMAL QUIZ
   if (type === "QUIZ") {
     return `
       <article class="task task-premium">
         <small>${taskLabel}</small>
+
         <h3>${safe(t.prompt)}</h3>
 
         <div class="answers">
@@ -522,6 +492,7 @@ function taskHTML(t, i) {
               <span class="answer-letter">
                 ${"ABCD"[n] || n + 1}
               </span>
+
               <span>${safe(o)}</span>
             </button>
           `).join("")}
@@ -529,90 +500,52 @@ function taskHTML(t, i) {
       </article>`;
   }
 
- 
-if (type === "LOGO") {
-  const imageUrl = driveImageUrl(t.prompt);
+  // LOGO ROUND
+  if (type === "LOGO") {
+    const imageUrl = driveImageUrl(t.prompt);
 
-  return `
-    <article class="task task-premium logo-task">
-      <small>${taskLabel} • GUESS THE LOGO</small>
-      <h3>Which brand does this logo belong to?</h3>
-
-      ${imageUrl
-        ? `
-          <div class="logo-image-frame">
-            <img
-              class="guess-logo-image"
-              src="${safe(imageUrl)}"
-              alt="Guess the brand logo"
-              referrerpolicy="no-referrer"
-              onerror="this.onerror=null;this.parentElement.innerHTML='<p class=logo-image-error>Logo could not load. Please contact your teacher.</p>';"
-            >
-          </div>
-        `
-        : `
-          <p class="logo-image-error">
-            Logo file not found. Please check the Tasks sheet filename.
-          </p>
-        `
-      }
-
-      <p class="task-hint">
-        Look carefully and enter the brand name.
-      </p>
-
-      <input data-input="${i}" autocomplete="off"
-        placeholder="Enter brand / company name">
-
-      <button class="primary-submit" data-submit="${i}">
-        SUBMIT ANSWER
-      </button>
-    </article>`;
-}
-
-
-  if (type === "MEMORY") {
     return `
-      <article class="task task-premium memory-task">
-        <small>
-          TASK ${i + 1} • 5 SECOND MEMORY CHALLENGE
-        </small>
+      <article class="task task-premium logo-task">
+        <small>${taskLabel} • GUESS THE LOGO</small>
 
-        <h3>Memorise the word before it disappears</h3>
+        <h3>Which brand does this logo belong to?</h3>
 
-        <div class="memory-display" data-memory-display="${i}">
-          <span class="memory-caption">REMEMBER THIS</span>
-          <strong class="memory-word">${safe(t.prompt)}</strong>
-          <span class="memory-countdown">
-            VISIBLE FOR 5 SECONDS
-          </span>
-        </div>
+        ${imageUrl
+          ? `
+            <div class="logo-image-frame">
+              <img
+                class="guess-logo-image"
+                src="${safe(imageUrl)}"
+                alt="Guess the brand logo"
+                referrerpolicy="no-referrer"
+                onerror="this.onerror=null;this.parentElement.innerHTML='<p class=logo-image-error>Logo could not load. Please contact your teacher.</p>';"
+              >
+            </div>
+          `
+          : `
+            <p class="logo-image-error">
+              Logo file not found. Please check the Tasks sheet filename.
+            </p>
+          `
+        }
 
-        <p
-          class="memory-hidden-note"
-          data-memory-hidden="${i}"
-          hidden
-        >
-          Time's up! The word is hidden. Type what you remember.
+        <p class="task-hint">
+          Look carefully and enter the brand name.
         </p>
 
         <input
           data-input="${i}"
           autocomplete="off"
-          placeholder="Type the word you remember"
-          disabled
+          placeholder="Enter brand / company name"
         >
 
-        <button
-          class="primary-submit"
-          data-submit="${i}"
-          disabled
-        >
+        <button class="primary-submit" data-submit="${i}">
           SUBMIT ANSWER
         </button>
       </article>`;
   }
 
+  // TEXT / SCRAMBLE / OTHER
   const hint = type === "SCRAMBLE"
     ? "Unscramble the word"
     : "Enter your answer";
@@ -620,6 +553,7 @@ if (type === "LOGO") {
   return `
     <article class="task task-premium">
       <small>${taskLabel} • ${safe(type)}</small>
+
       <h3>${safe(t.prompt)}</h3>
 
       <input
@@ -633,34 +567,30 @@ if (type === "LOGO") {
       </button>
     </article>`;
 }
+
+
 /* =========================
    SUBMIT ANSWER
 ========================= */
 
 async function send(i, taskNo, answer) {
 
-  if (answered[i] || state.roundOver || memorySubmitting) return;
+  if (answered[i] || state.roundOver) return;
 
   answer = String(answer ?? "").trim();
 
   if (!answer) {
-    $("feedback").textContent = "Please enter an answer.";
+    $("feedback").textContent =
+      "Please select or enter an answer.";
     return;
   }
 
-  const idx = Number(state.currentRound ?? -1);
-  const currentRound = state.rounds?.[idx];
-  const isMemoryRound =
-    currentRound && Number(currentRound.roundNo) === 4;
-
+  // Prevent repeated submission.
   answered[i] = true;
 
-  if (isMemoryRound) {
-    memorySubmitting = true;
-  }
-
   const buttons = document.querySelectorAll(
-    `[data-q="${i}"], [data-submit="${i}"]`
+    `[data-q="${i}"], [data-submit="${i}"], ` +
+    `[data-riddle-option="${i}"], [data-riddle-submit="${i}"]`
   );
 
   buttons.forEach(b => b.disabled = true);
@@ -681,6 +611,7 @@ async function send(i, taskNo, answer) {
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
+
       const result = await api("submitAnswer", payload);
 
       $("feedback").textContent =
@@ -690,19 +621,11 @@ async function send(i, taskNo, answer) {
         $("teamScore").textContent = result.teamScore;
       }
 
-      if (isMemoryRound) {
-        // Do not wait for the next 5-second polling cycle.
-        // Move to the next memory question after successful submission.
-        clearMemoryTimers();
-        memorySubmitting = false;
-        advanceMemoryTask();
-      } else {
-        await refresh();
-      }
-
+      await refresh();
       return;
 
     } catch (e) {
+
       lastError = e;
 
       if (attempt < 3) {
@@ -717,20 +640,10 @@ async function send(i, taskNo, answer) {
     }
   }
 
-  if (isMemoryRound) {
-    memorySubmitting = false;
-    answered[i] = false;
-
-    document.querySelectorAll(
-      `[data-submit="${i}"], [data-input="${i}"]`
-    ).forEach(el => {
-      el.disabled = false;
-    });
-  }
-
+  // Do not unlock the selected option after an uncertain response.
+  // This prevents a second answer being submitted accidentally.
   $("feedback").textContent =
-    "Submission status could not be confirmed. " +
-    "Please wait and check with your teacher.";
+    "Submission status could not be confirmed. Please wait and check with your teacher.";
 
   console.error("Answer submission status:", lastError);
 }
@@ -876,11 +789,15 @@ function showFinal() {
   const topHTML = (member, teamLabel, teamClass) => member ? `
     <article class="mvp-card ${teamClass}">
       <div class="mvp-crown">♛</div>
+
       <span class="mvp-label">
         ${safe(teamLabel)} • TOP SCORER
       </span>
+
       <strong>${safe(member.name)}</strong>
+
       <span class="mvp-reg">${safe(member.regNo)}</span>
+
       <b>${Number(member.score || 0)} <small>PTS</small></b>
     </article>
   ` : `
@@ -942,8 +859,11 @@ function showFinal() {
                 </td>
 
                 <td><strong>${safe(m.name)}</strong></td>
+
                 <td>${safe(m.regNo)}</td>
+
                 <td>${Number(m.attempts || 0)}</td>
+
                 <td>
                   <strong class="member-points">
                     ${Number(m.score || 0)}
