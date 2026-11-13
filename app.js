@@ -53,8 +53,9 @@ function safe(v) {
 
 
 /* =========================
-   API CONNECTION
+   API CONNECTION - FIXED
 ========================= */
+
 function api(action, data = {}) {
   return new Promise((resolve, reject) => {
     const callbackName =
@@ -63,15 +64,24 @@ function api(action, data = {}) {
 
     const script = document.createElement("script");
     let completed = false;
+    let timer = null;
 
     function cleanup() {
-      clearTimeout(timer);
-      delete window[callbackName];
+      if (timer) clearTimeout(timer);
+
+      try {
+        delete window[callbackName];
+      } catch (_) {
+        window[callbackName] = undefined;
+      }
+
+      script.onerror = null;
       script.remove();
     }
 
     function finish(error, result) {
       if (completed) return;
+
       completed = true;
       cleanup();
 
@@ -81,7 +91,9 @@ function api(action, data = {}) {
 
     window[callbackName] = response => {
       if (!response || response.ok !== true) {
-        finish(Error(response?.error || "Invalid server response"));
+        finish(
+          new Error(response?.error || "Invalid server response")
+        );
         return;
       }
 
@@ -89,26 +101,40 @@ function api(action, data = {}) {
     };
 
     script.onerror = () => {
-      finish(Error(
-        "Apps Script JSONP response could not be loaded. Check the callback response and deployment."
+      finish(new Error(
+        "Apps Script request failed to load. Verify the Web App URL and deployment access."
       ));
     };
 
-    const timer = setTimeout(() => {
-      finish(Error("Game server response timeout."));
+    timer = setTimeout(() => {
+      finish(new Error("Game server response timeout."));
     }, 30000);
 
-    const query = new URLSearchParams({
-      action: String(action),
-      callback: callbackName,
-      payload: JSON.stringify(data),
-      _: String(Date.now())
-    });
+    try {
+      // Always build the request from one clean /exec URL.
+      // This prevents another Apps Script URL from being appended.
+      const endpoint = new URL(API_URL);
 
-    script.src = API_URL + "?" + query.toString();
-    document.head.appendChild(script);
+      endpoint.search = "";
+      endpoint.hash = "";
+
+      endpoint.searchParams.set("action", String(action));
+      endpoint.searchParams.set("callback", callbackName);
+      endpoint.searchParams.set("payload", JSON.stringify(data));
+      endpoint.searchParams.set("_", String(Date.now()));
+
+      script.src = endpoint.toString();
+
+      document.head.appendChild(script);
+
+    } catch (error) {
+      finish(
+        new Error("Invalid Apps Script API_URL: " + error.message)
+      );
+    }
   });
 }
+
 
 /* =========================
    STUDENT LOGIN
@@ -261,6 +287,7 @@ function render() {
     $("teamTitle").textContent =
       "⚡ SUDDEN DEATH • TIE BREAKER QUESTION " +
       questionNumber;
+
   } else {
     $("teamTitle").textContent =
       `ROUND ${idx + 1}: ${r.title}`;
@@ -302,6 +329,7 @@ function render() {
 
 function renderTasks(r) {
   const area = $("tasks");
+
   const isRiddleRound =
     Number(r.roundNo) === 4 ||
     String(r.type || "").toUpperCase() === "RIDDLE";
@@ -311,25 +339,44 @@ function renderTasks(r) {
     .join("");
 
   (r.tasks || []).forEach((t, i) => {
+
+    // ROUND 4: RIDDLE WITH FOUR OPTIONS AND SUBMIT BUTTON
     if (isRiddleRound) {
       const optionButtons = area.querySelectorAll(
         `[data-riddle-option="${i}"]`
       );
-      const submitButton = area.querySelector(`[data-riddle-submit="${i}"]`);
+
+      const submitButton = area.querySelector(
+        `[data-riddle-submit="${i}"]`
+      );
 
       optionButtons.forEach(btn => {
         btn.addEventListener("click", () => {
-          if (riddleSelections[i] !== undefined || answered[i]) return;
+          if (
+            riddleSelections[i] !== undefined ||
+            answered[i]
+          ) return;
 
           riddleSelections[i] = btn.dataset.answer;
 
           optionButtons.forEach(option => {
             option.disabled = true;
-            option.classList.toggle("selected", option === btn);
-            option.setAttribute("aria-pressed", option === btn ? "true" : "false");
+
+            option.classList.toggle(
+              "selected",
+              option === btn
+            );
+
+            option.setAttribute(
+              "aria-pressed",
+              option === btn ? "true" : "false"
+            );
           });
 
-          if (submitButton) submitButton.disabled = false;
+          if (submitButton) {
+            submitButton.disabled = false;
+          }
+
           $("feedback").textContent =
             "Option selected. Press SUBMIT ANSWER to lock your response.";
         });
@@ -337,36 +384,54 @@ function renderTasks(r) {
 
       if (submitButton) {
         submitButton.disabled = true;
+
         submitButton.addEventListener("click", () => {
           if (riddleSelections[i] === undefined) {
-            $("feedback").textContent = "Please select one option first.";
+            $("feedback").textContent =
+              "Please select one option first.";
             return;
           }
+
           send(i, t.taskNo, riddleSelections[i]);
         });
       }
+
       return;
     }
 
+
+    // NORMAL QUIZ ROUNDS
     if (String(t.type).toUpperCase() === "QUIZ") {
       area.querySelectorAll(`[data-q="${i}"]`).forEach(btn => {
         btn.addEventListener("click", () => {
           send(i, t.taskNo, btn.dataset.answer);
         });
       });
+
     } else {
       const btn = area.querySelector(`[data-submit="${i}"]`);
+
       if (btn) {
         btn.onclick = () => {
           const input = area.querySelector(`[data-input="${i}"]`);
-          send(i, t.taskNo, input ? input.value : "");
+
+          send(
+            i,
+            t.taskNo,
+            input ? input.value : ""
+          );
         };
       }
 
       const input = area.querySelector(`[data-input="${i}"]`);
+
       if (input && Number(r.roundNo) === 5) {
         input.addEventListener("keydown", event => {
-          if (event.key === "Enter" && btn && !btn.disabled) {
+          if (
+            event.key === "Enter" &&
+            btn &&
+            !btn.disabled
+          ) {
             btn.click();
           }
         });
@@ -379,7 +444,6 @@ function renderTasks(r) {
 /* =========================
    TASK HTML
 ========================= */
-
 
 function driveImageUrl(value) {
   const raw = String(value || "").trim();
@@ -404,7 +468,6 @@ function driveImageUrl(value) {
 }
 
 
-
 function taskHTML(t, i, isRiddleRound = false) {
   const type = String(t.type || "TEXT").toUpperCase();
 
@@ -412,12 +475,19 @@ function taskHTML(t, i, isRiddleRound = false) {
     ? "⚡ TIE BREAKER QUESTION"
     : `TASK ${i + 1}`;
 
+
+  // ROUND 4: FOUR-OPTION RIDDLE
   if (isRiddleRound || type === "RIDDLE") {
     return `
       <article class="task task-premium riddle-task">
         <small>${taskLabel} • RIDDLE CHALLENGE</small>
+
         <h3>${safe(t.prompt)}</h3>
-        <p class="task-hint">Select one answer. Once selected, it cannot be changed.</p>
+
+        <p class="task-hint">
+          Select one answer. Once selected, it cannot be changed.
+        </p>
+
         <div class="answers riddle-answers">
           ${(t.options || []).map((o, n) => `
             <button
@@ -427,37 +497,64 @@ function taskHTML(t, i, isRiddleRound = false) {
               data-answer="${safe(o)}"
               aria-pressed="false"
             >
-              <span class="answer-letter">${"ABCD"[n] || n + 1}</span>
+              <span class="answer-letter">
+                ${"ABCD"[n] || n + 1}
+              </span>
+
               <span>${safe(o)}</span>
             </button>
           `).join("")}
         </div>
+
         <button
           type="button"
           class="primary-submit"
           data-riddle-submit="${i}"
           disabled
-        >SUBMIT ANSWER</button>
+        >
+          SUBMIT ANSWER
+        </button>
       </article>`;
   }
+
 
   const currentRoundNo = Number(
     state?.rounds?.[Number(state?.currentRound ?? -1)]?.roundNo || 0
   );
 
+
   // ROUND 5: GUESS THE BOLLYWOOD MOVIE FROM ITS DIALOGUE
   if (currentRoundNo === 5) {
     return `
       <article class="task task-premium dialogue-task">
-        <small>${taskLabel} • GUESS THE BOLLYWOOD MOVIE</small>
-        <div class="dialogue-icon" aria-hidden="true">🎬</div>
-        <h3 class="dialogue-heading">Which Bollywood movie is this dialogue from?</h3>
+
+        <small>
+          ${taskLabel} • GUESS THE BOLLYWOOD MOVIE
+        </small>
+
+        <div class="dialogue-icon" aria-hidden="true">
+          🎬
+        </div>
+
+        <h3 class="dialogue-heading">
+          Which Bollywood movie is this dialogue from?
+        </h3>
+
         <div class="dialogue-quote">
           <span class="dialogue-quote-mark">“</span>
+
           <p>${safe(t.prompt)}</p>
+
           <span class="dialogue-quote-mark closing">”</span>
         </div>
-        <label class="dialogue-label" for="dialogue-answer-${i}">ENTER MOVIE NAME</label>
+
+        <label
+          class="dialogue-label"
+          for="dialogue-answer-${i}"
+        >
+          ENTER MOVIE NAME
+        </label>
+
         <input
           id="dialogue-answer-${i}"
           class="dialogue-input"
@@ -466,17 +563,29 @@ function taskHTML(t, i, isRiddleRound = false) {
           autocapitalize="words"
           placeholder="Type the Bollywood movie name"
         >
-        <button class="primary-submit" data-submit="${i}">
+
+        <button
+          class="primary-submit"
+          data-submit="${i}"
+        >
           SUBMIT ANSWER
         </button>
-        <p class="task-hint">Your answer cannot be changed after submission.</p>
+
+        <p class="task-hint">
+          Your answer cannot be changed after submission.
+        </p>
+
       </article>`;
   }
 
+
+  // NORMAL MULTIPLE-CHOICE QUIZ
   if (type === "QUIZ") {
     return `
       <article class="task task-premium">
+
         <small>${taskLabel}</small>
+
         <h3>${safe(t.prompt)}</h3>
 
         <div class="answers">
@@ -489,62 +598,83 @@ function taskHTML(t, i, isRiddleRound = false) {
               <span class="answer-letter">
                 ${"ABCD"[n] || n + 1}
               </span>
+
               <span>${safe(o)}</span>
             </button>
           `).join("")}
         </div>
+
       </article>`;
   }
 
- 
-if (type === "LOGO") {
-  const imageUrl = driveImageUrl(t.prompt);
 
-  return `
-    <article class="task task-premium logo-task">
-      <small>${taskLabel} • GUESS THE LOGO</small>
-      <h3>Which brand does this logo belong to?</h3>
+  // LOGO IDENTIFICATION TASK
+  if (type === "LOGO") {
+    const imageUrl = driveImageUrl(t.prompt);
 
-      ${imageUrl
-        ? `
-          <div class="logo-image-frame">
-            <img
-              class="guess-logo-image"
-              src="${safe(imageUrl)}"
-              alt="Guess the brand logo"
-              referrerpolicy="no-referrer"
-              onerror="this.onerror=null;this.parentElement.innerHTML='<p class=logo-image-error>Logo could not load. Please contact your teacher.</p>';"
-            >
-          </div>
-        `
-        : `
-          <p class="logo-image-error">
-            Logo file not found. Please check the Tasks sheet filename.
-          </p>
-        `
-      }
+    return `
+      <article class="task task-premium logo-task">
 
-      <p class="task-hint">
-        Look carefully and enter the brand name.
-      </p>
+        <small>
+          ${taskLabel} • GUESS THE LOGO
+        </small>
 
-      <input data-input="${i}" autocomplete="off"
-        placeholder="Enter brand / company name">
+        <h3>
+          Which brand does this logo belong to?
+        </h3>
 
-      <button class="primary-submit" data-submit="${i}">
-        SUBMIT ANSWER
-      </button>
-    </article>`;
-}
+        ${imageUrl
+          ? `
+            <div class="logo-image-frame">
+              <img
+                class="guess-logo-image"
+                src="${safe(imageUrl)}"
+                alt="Guess the brand logo"
+                referrerpolicy="no-referrer"
+                onerror="this.onerror=null;this.parentElement.innerHTML='<p class=logo-image-error>Logo could not load. Please contact your teacher.</p>';"
+              >
+            </div>
+          `
+          : `
+            <p class="logo-image-error">
+              Logo file not found. Please check the Tasks sheet filename.
+            </p>
+          `
+        }
+
+        <p class="task-hint">
+          Look carefully and enter the brand name.
+        </p>
+
+        <input
+          data-input="${i}"
+          autocomplete="off"
+          placeholder="Enter brand / company name"
+        >
+
+        <button
+          class="primary-submit"
+          data-submit="${i}"
+        >
+          SUBMIT ANSWER
+        </button>
+
+      </article>`;
+  }
 
 
+  // OTHER TEXT / SCRAMBLE TASKS
   const hint = type === "SCRAMBLE"
     ? "Unscramble the word"
     : "Enter your answer";
 
   return `
     <article class="task task-premium">
-      <small>${taskLabel} • ${safe(type)}</small>
+
+      <small>
+        ${taskLabel} • ${safe(type)}
+      </small>
+
       <h3>${safe(t.prompt)}</h3>
 
       <input
@@ -553,11 +683,17 @@ if (type === "LOGO") {
         placeholder="${hint}"
       >
 
-      <button class="primary-submit" data-submit="${i}">
+      <button
+        class="primary-submit"
+        data-submit="${i}"
+      >
         SUBMIT ANSWER
       </button>
+
     </article>`;
 }
+
+
 /* =========================
    SUBMIT ANSWER
 ========================= */
@@ -566,8 +702,10 @@ async function send(i, taskNo, answer) {
   if (answered[i] || state.roundOver) return;
 
   answer = String(answer ?? "").trim();
+
   if (!answer) {
-    $("feedback").textContent = "Please select or enter an answer.";
+    $("feedback").textContent =
+      "Please select or enter an answer.";
     return;
   }
 
@@ -577,6 +715,7 @@ async function send(i, taskNo, answer) {
     `[data-q="${i}"], [data-submit="${i}"], ` +
     `[data-riddle-option="${i}"], [data-riddle-submit="${i}"]`
   );
+
   buttons.forEach(b => b.disabled = true);
 
   $("feedback").textContent = "Saving your answer…";
@@ -592,9 +731,11 @@ async function send(i, taskNo, answer) {
   };
 
   let lastError;
+
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const result = await api("submitAnswer", payload);
+
       $("feedback").textContent =
         result?.message || "Answer submitted successfully.";
 
@@ -604,26 +745,40 @@ async function send(i, taskNo, answer) {
 
       await refresh();
       return;
+
     } catch (e) {
       lastError = e;
+
       if (attempt < 3) {
         $("feedback").textContent =
           "Connection delayed. Checking saved answer… Attempt " +
           (attempt + 1) + " of 3.";
+
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
     }
   }
 
   answered[i] = false;
-  const retryButton = document.querySelector(`[data-riddle-submit="${i}"]`);
-  if (retryButton && riddleSelections[i] !== undefined) {
+
+  const retryButton = document.querySelector(
+    `[data-riddle-submit="${i}"]`
+  );
+
+  if (
+    retryButton &&
+    riddleSelections[i] !== undefined
+  ) {
     retryButton.disabled = false;
   }
 
   $("feedback").textContent =
     "Submission status could not be confirmed. Please wait and check with your teacher.";
-  console.error("Answer submission status:", lastError);
+
+  console.error(
+    "Answer submission status:",
+    lastError
+  );
 }
 
 
@@ -645,6 +800,7 @@ function renderTimer() {
 
   if (isTieBreaker) {
     duration = 45;
+
   } else {
     const r = state.rounds?.[idx];
 
@@ -687,6 +843,7 @@ function setText(id, value) {
 
   if (el) {
     el.textContent = value;
+
   } else {
     console.warn("Missing HTML element: #" + id);
   }
@@ -694,7 +851,10 @@ function setText(id, value) {
 
 
 function showFinal() {
-  const s = state.scores || { A: 0, B: 0 };
+  const s = state.scores || {
+    A: 0,
+    B: 0
+  };
 
   const scoreA = Number(s.A || 0);
   const scoreB = Number(s.B || 0);
@@ -722,7 +882,9 @@ function showFinal() {
     state.teams?.B?.name || "TEAM B"
   );
 
+
   const tbWinner = state.tieBreaker?.winner || "";
+
   let winnerText;
 
   if (tbWinner === "A") {
@@ -749,6 +911,7 @@ function showFinal() {
 
   setText("winner", winnerText);
 
+
   const individual = state.individualScores || {
     A: [],
     B: []
@@ -764,23 +927,40 @@ function showFinal() {
   const topA = (individual.A || [])[0];
   const topB = (individual.B || [])[0];
 
+
   const topHTML = (member, teamLabel, teamClass) => member ? `
     <article class="mvp-card ${teamClass}">
       <div class="mvp-crown">♛</div>
+
       <span class="mvp-label">
         ${safe(teamLabel)} • TOP SCORER
       </span>
+
       <strong>${safe(member.name)}</strong>
-      <span class="mvp-reg">${safe(member.regNo)}</span>
-      <b>${Number(member.score || 0)} <small>PTS</small></b>
+
+      <span class="mvp-reg">
+        ${safe(member.regNo)}
+      </span>
+
+      <b>
+        ${Number(member.score || 0)}
+        <small>PTS</small>
+      </b>
     </article>
   ` : `
     <article class="mvp-card ${teamClass}">
-      <span class="mvp-label">${safe(teamLabel)}</span>
+      <span class="mvp-label">
+        ${safe(teamLabel)}
+      </span>
+
       <strong>No player data</strong>
-      <b>0 <small>PTS</small></b>
+
+      <b>
+        0 <small>PTS</small>
+      </b>
     </article>
   `;
+
 
   const mvpArea = $("topPerformers");
 
@@ -798,6 +978,7 @@ function showFinal() {
       );
   }
 
+
   const makeTable = teamKey => {
     const list = individual[teamKey] || [];
 
@@ -810,7 +991,9 @@ function showFinal() {
 
     return `
       <div class="member-table-wrap">
+
         <table class="member-table">
+
           <thead>
             <tr>
               <th>RANK</th>
@@ -824,6 +1007,7 @@ function showFinal() {
           <tbody>
             ${list.map(m => `
               <tr class="${Number(m.rank) === 1 ? "rank-first" : ""}">
+
                 <td>
                   <span class="rank-pill">
                     ${Number(m.rank) === 1
@@ -832,20 +1016,28 @@ function showFinal() {
                   </span>
                 </td>
 
-                <td><strong>${safe(m.name)}</strong></td>
+                <td>
+                  <strong>${safe(m.name)}</strong>
+                </td>
+
                 <td>${safe(m.regNo)}</td>
+
                 <td>${Number(m.attempts || 0)}</td>
+
                 <td>
                   <strong class="member-points">
                     ${Number(m.score || 0)}
                   </strong>
                 </td>
+
               </tr>
             `).join("")}
           </tbody>
+
         </table>
       </div>`;
   };
+
 
   const memberA = $("membersA");
   const memberB = $("membersB");
@@ -858,11 +1050,13 @@ function showFinal() {
     memberB.innerHTML = makeTable("B");
   }
 
+
   const totalMembers = $("totalMembers");
 
   if (totalMembers) {
     totalMembers.textContent = allMembers.length;
   }
+
 
   const totalAttempts = $("totalAttempts");
 
