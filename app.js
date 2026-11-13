@@ -1,4 +1,3 @@
-
 const API_URL = "https://script.google.com/macros/s/AKfycbzTsW0aSYEUl14dfvcXpSP5608ALn3VMh7fw_QtA5L_8ddnnhrPIb5U-mNptvutV7WQrw/exec";
 
 const $ = id => document.getElementById(id);
@@ -17,7 +16,7 @@ let ticker = null;
 let answered = {};
 let renderedRound = "";
 
-// Round 4 riddle challenge selection
+// Round 4 riddle challenge: one option can be selected, then submitted.
 let riddleSelections = {};
 
 const playerId = (
@@ -297,7 +296,6 @@ function render() {
 
 function renderTasks(r) {
   const area = $("tasks");
-
   const isRiddleRound =
     Number(r.roundNo) === 4 ||
     String(r.type || "").toUpperCase() === "RIDDLE";
@@ -307,93 +305,65 @@ function renderTasks(r) {
     .join("");
 
   (r.tasks || []).forEach((t, i) => {
-
-    // ROUND 4: RIDDLE MCQ
     if (isRiddleRound) {
-
       const optionButtons = area.querySelectorAll(
         `[data-riddle-option="${i}"]`
       );
-
-      const submitButton = area.querySelector(
-        `[data-riddle-submit="${i}"]`
-      );
+      const submitButton = area.querySelector(`[data-riddle-submit="${i}"]`);
 
       optionButtons.forEach(btn => {
         btn.addEventListener("click", () => {
-
-          // Once selected, selection cannot be changed.
-          if (
-            riddleSelections[i] !== undefined ||
-            answered[i]
-          ) return;
+          if (riddleSelections[i] !== undefined || answered[i]) return;
 
           riddleSelections[i] = btn.dataset.answer;
 
           optionButtons.forEach(option => {
             option.disabled = true;
-
-            option.classList.toggle(
-              "selected",
-              option === btn
-            );
-
-            option.setAttribute(
-              "aria-pressed",
-              option === btn ? "true" : "false"
-            );
+            option.classList.toggle("selected", option === btn);
+            option.setAttribute("aria-pressed", option === btn ? "true" : "false");
           });
 
-          if (submitButton) {
-            submitButton.disabled = false;
-          }
-
+          if (submitButton) submitButton.disabled = false;
           $("feedback").textContent =
-            "Option selected. Press SUBMIT ANSWER to submit.";
+            "Option selected. Press SUBMIT ANSWER to lock your response.";
         });
       });
 
       if (submitButton) {
         submitButton.disabled = true;
-
         submitButton.addEventListener("click", () => {
-
           if (riddleSelections[i] === undefined) {
-            $("feedback").textContent =
-              "Please select one option first.";
+            $("feedback").textContent = "Please select one option first.";
             return;
           }
-
           send(i, t.taskNo, riddleSelections[i]);
         });
       }
-
       return;
     }
 
-    // OTHER QUIZ ROUNDS
     if (String(t.type).toUpperCase() === "QUIZ") {
-
       area.querySelectorAll(`[data-q="${i}"]`).forEach(btn => {
         btn.addEventListener("click", () => {
           send(i, t.taskNo, btn.dataset.answer);
         });
       });
-
     } else {
-
       const btn = area.querySelector(`[data-submit="${i}"]`);
-
       if (btn) {
         btn.onclick = () => {
           const input = area.querySelector(`[data-input="${i}"]`);
-
-          send(
-            i,
-            t.taskNo,
-            input ? input.value : ""
-          );
+          send(i, t.taskNo, input ? input.value : "");
         };
+      }
+
+      const input = area.querySelector(`[data-input="${i}"]`);
+      if (input && Number(r.roundNo) === 5) {
+        input.addEventListener("keydown", event => {
+          if (event.key === "Enter" && btn && !btn.disabled) {
+            btn.click();
+          }
+        });
       }
     }
   });
@@ -404,11 +374,13 @@ function renderTasks(r) {
    TASK HTML
 ========================= */
 
+
 function driveImageUrl(value) {
   const raw = String(value || "").trim();
 
   if (!raw) return "";
 
+  // Extract Google Drive file ID from different Drive URL formats.
   const idMatch = raw.match(
     /(?:drive\.google\.com\/thumbnail\?id=|drive\.google\.com\/uc\?[^#]*id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=)([a-zA-Z0-9_-]+)/
   );
@@ -426,6 +398,7 @@ function driveImageUrl(value) {
 }
 
 
+
 function taskHTML(t, i, isRiddleRound = false) {
   const type = String(t.type || "TEXT").toUpperCase();
 
@@ -433,18 +406,12 @@ function taskHTML(t, i, isRiddleRound = false) {
     ? "⚡ TIE BREAKER QUESTION"
     : `TASK ${i + 1}`;
 
-  // ROUND 4 RIDDLE
   if (isRiddleRound || type === "RIDDLE") {
     return `
       <article class="task task-premium riddle-task">
         <small>${taskLabel} • RIDDLE CHALLENGE</small>
-
         <h3>${safe(t.prompt)}</h3>
-
-        <p class="task-hint">
-          Select one answer. Once selected, it cannot be changed.
-        </p>
-
+        <p class="task-hint">Select one answer. Once selected, it cannot be changed.</p>
         <div class="answers riddle-answers">
           ${(t.options || []).map((o, n) => `
             <button
@@ -454,32 +421,56 @@ function taskHTML(t, i, isRiddleRound = false) {
               data-answer="${safe(o)}"
               aria-pressed="false"
             >
-              <span class="answer-letter">
-                ${"ABCD"[n] || n + 1}
-              </span>
-
+              <span class="answer-letter">${"ABCD"[n] || n + 1}</span>
               <span>${safe(o)}</span>
             </button>
           `).join("")}
         </div>
-
         <button
           type="button"
           class="primary-submit"
           data-riddle-submit="${i}"
           disabled
-        >
-          SUBMIT ANSWER
-        </button>
+        >SUBMIT ANSWER</button>
       </article>`;
   }
 
-  // NORMAL QUIZ
+  const currentRoundNo = Number(
+    state?.rounds?.[Number(state?.currentRound ?? -1)]?.roundNo || 0
+  );
+
+  // ROUND 5: GUESS THE BOLLYWOOD MOVIE FROM ITS DIALOGUE
+  if (currentRoundNo === 5) {
+    return `
+      <article class="task task-premium dialogue-task">
+        <small>${taskLabel} • GUESS THE BOLLYWOOD MOVIE</small>
+        <div class="dialogue-icon" aria-hidden="true">🎬</div>
+        <h3 class="dialogue-heading">Which Bollywood movie is this dialogue from?</h3>
+        <div class="dialogue-quote">
+          <span class="dialogue-quote-mark">“</span>
+          <p>${safe(t.prompt)}</p>
+          <span class="dialogue-quote-mark closing">”</span>
+        </div>
+        <label class="dialogue-label" for="dialogue-answer-${i}">ENTER MOVIE NAME</label>
+        <input
+          id="dialogue-answer-${i}"
+          class="dialogue-input"
+          data-input="${i}"
+          autocomplete="off"
+          autocapitalize="words"
+          placeholder="Type the Bollywood movie name"
+        >
+        <button class="primary-submit" data-submit="${i}">
+          SUBMIT ANSWER
+        </button>
+        <p class="task-hint">Your answer cannot be changed after submission.</p>
+      </article>`;
+  }
+
   if (type === "QUIZ") {
     return `
       <article class="task task-premium">
         <small>${taskLabel}</small>
-
         <h3>${safe(t.prompt)}</h3>
 
         <div class="answers">
@@ -492,7 +483,6 @@ function taskHTML(t, i, isRiddleRound = false) {
               <span class="answer-letter">
                 ${"ABCD"[n] || n + 1}
               </span>
-
               <span>${safe(o)}</span>
             </button>
           `).join("")}
@@ -500,52 +490,48 @@ function taskHTML(t, i, isRiddleRound = false) {
       </article>`;
   }
 
-  // LOGO ROUND
-  if (type === "LOGO") {
-    const imageUrl = driveImageUrl(t.prompt);
+ 
+if (type === "LOGO") {
+  const imageUrl = driveImageUrl(t.prompt);
 
-    return `
-      <article class="task task-premium logo-task">
-        <small>${taskLabel} • GUESS THE LOGO</small>
+  return `
+    <article class="task task-premium logo-task">
+      <small>${taskLabel} • GUESS THE LOGO</small>
+      <h3>Which brand does this logo belong to?</h3>
 
-        <h3>Which brand does this logo belong to?</h3>
+      ${imageUrl
+        ? `
+          <div class="logo-image-frame">
+            <img
+              class="guess-logo-image"
+              src="${safe(imageUrl)}"
+              alt="Guess the brand logo"
+              referrerpolicy="no-referrer"
+              onerror="this.onerror=null;this.parentElement.innerHTML='<p class=logo-image-error>Logo could not load. Please contact your teacher.</p>';"
+            >
+          </div>
+        `
+        : `
+          <p class="logo-image-error">
+            Logo file not found. Please check the Tasks sheet filename.
+          </p>
+        `
+      }
 
-        ${imageUrl
-          ? `
-            <div class="logo-image-frame">
-              <img
-                class="guess-logo-image"
-                src="${safe(imageUrl)}"
-                alt="Guess the brand logo"
-                referrerpolicy="no-referrer"
-                onerror="this.onerror=null;this.parentElement.innerHTML='<p class=logo-image-error>Logo could not load. Please contact your teacher.</p>';"
-              >
-            </div>
-          `
-          : `
-            <p class="logo-image-error">
-              Logo file not found. Please check the Tasks sheet filename.
-            </p>
-          `
-        }
+      <p class="task-hint">
+        Look carefully and enter the brand name.
+      </p>
 
-        <p class="task-hint">
-          Look carefully and enter the brand name.
-        </p>
+      <input data-input="${i}" autocomplete="off"
+        placeholder="Enter brand / company name">
 
-        <input
-          data-input="${i}"
-          autocomplete="off"
-          placeholder="Enter brand / company name"
-        >
+      <button class="primary-submit" data-submit="${i}">
+        SUBMIT ANSWER
+      </button>
+    </article>`;
+}
 
-        <button class="primary-submit" data-submit="${i}">
-          SUBMIT ANSWER
-        </button>
-      </article>`;
-  }
 
-  // TEXT / SCRAMBLE / OTHER
   const hint = type === "SCRAMBLE"
     ? "Unscramble the word"
     : "Enter your answer";
@@ -553,7 +539,6 @@ function taskHTML(t, i, isRiddleRound = false) {
   return `
     <article class="task task-premium">
       <small>${taskLabel} • ${safe(type)}</small>
-
       <h3>${safe(t.prompt)}</h3>
 
       <input
@@ -567,32 +552,25 @@ function taskHTML(t, i, isRiddleRound = false) {
       </button>
     </article>`;
 }
-
-
 /* =========================
    SUBMIT ANSWER
 ========================= */
 
 async function send(i, taskNo, answer) {
-
   if (answered[i] || state.roundOver) return;
 
   answer = String(answer ?? "").trim();
-
   if (!answer) {
-    $("feedback").textContent =
-      "Please select or enter an answer.";
+    $("feedback").textContent = "Please select or enter an answer.";
     return;
   }
 
-  // Prevent repeated submission.
   answered[i] = true;
 
   const buttons = document.querySelectorAll(
     `[data-q="${i}"], [data-submit="${i}"], ` +
     `[data-riddle-option="${i}"], [data-riddle-submit="${i}"]`
   );
-
   buttons.forEach(b => b.disabled = true);
 
   $("feedback").textContent = "Saving your answer…";
@@ -608,12 +586,9 @@ async function send(i, taskNo, answer) {
   };
 
   let lastError;
-
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-
       const result = await api("submitAnswer", payload);
-
       $("feedback").textContent =
         result?.message || "Answer submitted successfully.";
 
@@ -623,28 +598,25 @@ async function send(i, taskNo, answer) {
 
       await refresh();
       return;
-
     } catch (e) {
-
       lastError = e;
-
       if (attempt < 3) {
         $("feedback").textContent =
           "Connection delayed. Checking saved answer… Attempt " +
           (attempt + 1) + " of 3.";
-
-        await new Promise(resolve =>
-          setTimeout(resolve, 1500)
-        );
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
     }
   }
 
-  // Do not unlock the selected option after an uncertain response.
-  // This prevents a second answer being submitted accidentally.
+  answered[i] = false;
+  const retryButton = document.querySelector(`[data-riddle-submit="${i}"]`);
+  if (retryButton && riddleSelections[i] !== undefined) {
+    retryButton.disabled = false;
+  }
+
   $("feedback").textContent =
     "Submission status could not be confirmed. Please wait and check with your teacher.";
-
   console.error("Answer submission status:", lastError);
 }
 
@@ -789,15 +761,11 @@ function showFinal() {
   const topHTML = (member, teamLabel, teamClass) => member ? `
     <article class="mvp-card ${teamClass}">
       <div class="mvp-crown">♛</div>
-
       <span class="mvp-label">
         ${safe(teamLabel)} • TOP SCORER
       </span>
-
       <strong>${safe(member.name)}</strong>
-
       <span class="mvp-reg">${safe(member.regNo)}</span>
-
       <b>${Number(member.score || 0)} <small>PTS</small></b>
     </article>
   ` : `
@@ -859,11 +827,8 @@ function showFinal() {
                 </td>
 
                 <td><strong>${safe(m.name)}</strong></td>
-
                 <td>${safe(m.regNo)}</td>
-
                 <td>${Number(m.attempts || 0)}</td>
-
                 <td>
                   <strong class="member-points">
                     ${Number(m.score || 0)}
