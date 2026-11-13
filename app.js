@@ -582,7 +582,7 @@ function taskHTML(t, i, isRiddleRound = false) {
 
   // LOGO IDENTIFICATION TASK
   if (type === "LOGO") {
-    const imageUrl = driveImageUrl(t.prompt);
+const imageUrl = t.imageUrl || driveImageUrl(t.prompt);
 
     return `
       <article class="task task-premium logo-task">
