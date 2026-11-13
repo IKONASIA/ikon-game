@@ -90,7 +90,7 @@ function api(action, data = {}) {
 
     script.onerror = () => {
       finish(Error(
-        "Game server connection failed. Check Apps Script deployment."
+        "Apps Script JSONP response could not be loaded. Check the callback response and deployment."
       ));
     };
 
