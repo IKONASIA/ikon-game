@@ -1,4 +1,6 @@
+
 const API_URL = "https://script.google.com/macros/s/AKfycbzMoP6MZ8MOpgAusiIbLuKSEabCmQv-PhZ3k7P_FCxljNRez0pRR678YcXeQJj2tXce0g/exec";
+
 const $ = id => document.getElementById(id);
 
 let room = "";
@@ -53,85 +55,57 @@ function safe(v) {
 
 
 /* =========================
-   API CONNECTION - FIXED
+   API CONNECTION
 ========================= */
 
 function api(action, data = {}) {
   return new Promise((resolve, reject) => {
-    const callbackName =
-      "ikon_cb_" + Date.now() + "_" +
-      Math.random().toString(36).slice(2);
 
+    const cb = "ikon_cb_" + Math.random().toString(36).slice(2);
     const script = document.createElement("script");
-    let completed = false;
-    let timer = null;
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(Error(
+        "Server response is delayed. Your answer may already be saved."
+      ));
+    }, 40000);
 
     function cleanup() {
-      if (timer) clearTimeout(timer);
-
-      try {
-        delete window[callbackName];
-      } catch (_) {
-        window[callbackName] = undefined;
-      }
-
-      script.onerror = null;
+      clearTimeout(timer);
+      delete window[cb];
       script.remove();
     }
 
-    function finish(error, result) {
-      if (completed) return;
-
-      completed = true;
+    window[cb] = r => {
       cleanup();
 
-      if (error) reject(error);
-      else resolve(result);
-    }
-
-    window[callbackName] = response => {
-      if (!response || response.ok !== true) {
-        finish(
-          new Error(response?.error || "Invalid server response")
-        );
-        return;
+      if (r?.ok) {
+        resolve(r.data);
+      } else {
+        reject(Error(r?.error || "Request failed"));
       }
-
-      finish(null, response.data);
     };
 
     script.onerror = () => {
-      finish(new Error(
-        "Apps Script request failed to load. Verify the Web App URL and deployment access."
-      ));
+      cleanup();
+      reject(Error("Could not connect to the game server."));
     };
 
-    timer = setTimeout(() => {
-      finish(new Error("Game server response timeout."));
-    }, 30000);
+    // Build URL from one endpoint only.
+    // This prevents duplicate Apps Script URLs.
+    const endpoint = new URL(API_URL);
 
-    try {
-      // Always build the request from one clean /exec URL.
-      // This prevents another Apps Script URL from being appended.
-      const endpoint = new URL(API_URL);
+    endpoint.search = "";
+    endpoint.hash = "";
 
-      endpoint.search = "";
-      endpoint.hash = "";
+    endpoint.searchParams.set("action", action);
+    endpoint.searchParams.set("callback", cb);
+    endpoint.searchParams.set("payload", JSON.stringify(data));
+    endpoint.searchParams.set("_", String(Date.now()));
 
-      endpoint.searchParams.set("action", String(action));
-      endpoint.searchParams.set("callback", callbackName);
-      endpoint.searchParams.set("payload", JSON.stringify(data));
-      endpoint.searchParams.set("_", String(Date.now()));
-
-      script.src = endpoint.toString();
-
-      document.head.appendChild(script);
-
-    } catch (error) {
-      finish(
-        new Error("Invalid Apps Script API_URL: " + error.message)
-      );
-    }
+    script.src = endpoint.toString();
+    document.head.appendChild(script);
   });
 }
 
@@ -287,7 +261,6 @@ function render() {
     $("teamTitle").textContent =
       "⚡ SUDDEN DEATH • TIE BREAKER QUESTION " +
       questionNumber;
-
   } else {
     $("teamTitle").textContent =
       `ROUND ${idx + 1}: ${r.title}`;
@@ -340,7 +313,7 @@ function renderTasks(r) {
 
   (r.tasks || []).forEach((t, i) => {
 
-    // ROUND 4: RIDDLE WITH FOUR OPTIONS AND SUBMIT BUTTON
+    // ROUND 4: FOUR OPTIONS + SEPARATE SUBMIT BUTTON
     if (isRiddleRound) {
       const optionButtons = area.querySelectorAll(
         `[data-riddle-option="${i}"]`
@@ -450,7 +423,6 @@ function driveImageUrl(value) {
 
   if (!raw) return "";
 
-  // Extract Google Drive file ID from different Drive URL formats.
   const idMatch = raw.match(
     /(?:drive\.google\.com\/thumbnail\?id=|drive\.google\.com\/uc\?[^#]*id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=)([a-zA-Z0-9_-]+)/
   );
@@ -476,7 +448,7 @@ function taskHTML(t, i, isRiddleRound = false) {
     : `TASK ${i + 1}`;
 
 
-  // ROUND 4: FOUR-OPTION RIDDLE
+  // ROUND 4: RIDDLE WITH FOUR OPTIONS
   if (isRiddleRound || type === "RIDDLE") {
     return `
       <article class="task task-premium riddle-task">
@@ -523,7 +495,7 @@ function taskHTML(t, i, isRiddleRound = false) {
   );
 
 
-  // ROUND 5: GUESS THE BOLLYWOOD MOVIE FROM ITS DIALOGUE
+  // ROUND 5: DIALOGUE - TYPE MOVIE NAME AND SUBMIT
   if (currentRoundNo === 5) {
     return `
       <article class="task task-premium dialogue-task">
