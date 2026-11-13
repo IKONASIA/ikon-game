@@ -56,53 +56,60 @@ function safe(v) {
 /* =========================
    API CONNECTION
 ========================= */
-
 function api(action, data = {}) {
   return new Promise((resolve, reject) => {
+    const callbackName =
+      "ikon_cb_" + Date.now() + "_" +
+      Math.random().toString(36).slice(2);
 
-    const cb = "ikon_cb_" + Math.random().toString(36).slice(2);
     const script = document.createElement("script");
-
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(Error(
-        "Server response is delayed. Your answer may already be saved."
-      ));
-    }, 40000);
+    let completed = false;
 
     function cleanup() {
       clearTimeout(timer);
-      delete window[cb];
+      delete window[callbackName];
       script.remove();
     }
 
-    window[cb] = r => {
+    function finish(error, result) {
+      if (completed) return;
+      completed = true;
       cleanup();
 
-      if (r?.ok) {
-        resolve(r.data);
-      } else {
-        reject(Error(r?.error || "Request failed"));
+      if (error) reject(error);
+      else resolve(result);
+    }
+
+    window[callbackName] = response => {
+      if (!response || response.ok !== true) {
+        finish(Error(response?.error || "Invalid server response"));
+        return;
       }
+
+      finish(null, response.data);
     };
 
     script.onerror = () => {
-      cleanup();
-      reject(Error("Could not connect to the game server."));
+      finish(Error(
+        "Game server connection failed. Check Apps Script deployment."
+      ));
     };
 
-    const q = new URLSearchParams({
-      action,
-      callback: cb,
+    const timer = setTimeout(() => {
+      finish(Error("Game server response timeout."));
+    }, 30000);
+
+    const query = new URLSearchParams({
+      action: String(action),
+      callback: callbackName,
       payload: JSON.stringify(data),
-      _: Date.now()
+      _: String(Date.now())
     });
 
-    script.src = API_URL + "?" + q.toString();
-    document.body.appendChild(script);
+    script.src = API_URL + "?" + query.toString();
+    document.head.appendChild(script);
   });
 }
-
 
 /* =========================
    STUDENT LOGIN
