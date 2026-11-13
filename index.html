@@ -18,6 +18,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* Round 4: visibly mark the one-time selected option. */
+    #tasks .riddle-option.selected {
+      border: 2px solid #d6a323 !important;
+      background: #fff6d9 !important;
+      color: #513900 !important;
+      opacity: 1 !important;
+      box-shadow: 0 0 0 3px rgba(214, 163, 35, .16);
+    }
+    #tasks .riddle-option:disabled {
+      cursor: not-allowed;
+    }
+    #tasks [data-riddle-submit]:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -60,9 +77,7 @@
         <h1>FINAL <span>LEADERBOARD</span></h1>
         <p>The challenge is over. Here are the champions and individual performances.</p>
       </div>
-
       <div class="winner-banner"><span>🏆</span><h2 id="winner"></h2></div>
-
       <div class="scoreboard-grid">
         <article class="team-score-card team-a-card">
           <div class="team-card-top"><span class="team-symbol">A</span><span class="team-caption">TEAM TOTAL</span></div>
@@ -75,7 +90,6 @@
       </div>
       <div class="section-title-row"><div><span class="section-kicker">INDIVIDUAL HONOURS</span><h2>Top performers</h2></div><span class="mini-note">Highest scorer from each team</span></div>
       <div id="topPerformers" class="mvp-grid"></div>
-
       <div class="section-title-row stats-title"><div><span class="section-kicker">PLAYER BREAKDOWN</span><h2>Individual team rankings</h2></div></div>
       <div class="member-stats">
         <div><span>PLAYERS</span><strong id="totalMembers">0</strong></div>
