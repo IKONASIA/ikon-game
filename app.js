@@ -125,6 +125,7 @@ function api(action, data = {}) {
    STUDENT LOGIN
 ========================= */
 
+
 async function join() {
   try {
     regNo = $("reg").value.trim().toUpperCase();
@@ -133,24 +134,39 @@ async function join() {
       throw Error("Please enter your Registration Number.");
     }
 
+    // Get the saved ID or create one before sending the request.
+    playerId = getOrCreatePlayerId(regNo);
+
     $("joinBtn").disabled = true;
-    $("loginMessage").textContent = "Joining battle…";
+    $("loginMessage").textContent = "Joining current battle…";
 
     const d = await api("joinPlayer", {
-      regNo,
-      playerId
+      regNo: regNo,
+      playerId: playerId
     });
 
+    // Server may return the old ID when resuming an existing entry.
     room = d.room;
     team = d.team;
     playerName = d.playerName;
+    playerId = d.playerId || playerId;
+
+    // Save the server-confirmed ID for the next login.
+    localStorage.setItem(
+      "ikonBrainBattlePlayerId_" + regNo,
+      playerId
+    );
 
     $("teamName").textContent =
       (team === "A" ? "🔵 TEAM A" : "🔴 TEAM B") +
       " • " + playerName;
 
     $("teamTitle").textContent =
-      "You joined successfully. Waiting for teacher to start…";
+      d.resumed
+        ? "Welcome back! Rejoined your current battle."
+        : "You joined successfully. Waiting for teacher to start…";
+
+    $("loginMessage").textContent = "";
 
     screen("team");
     startPolling();
@@ -160,6 +176,7 @@ async function join() {
     $("joinBtn").disabled = false;
   }
 }
+
 
 
 /* =========================
