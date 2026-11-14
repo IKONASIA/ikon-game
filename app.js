@@ -20,11 +20,22 @@ let renderedRound = "";
 // Round 4 riddle challenge: one option can be selected, then submitted.
 let riddleSelections = {};
 
-const playerId = (
-  crypto.randomUUID
-    ? crypto.randomUUID()
-    : "p" + Date.now() + "_" + Math.random().toString(36).slice(2)
-);
+let playerId = "";
+
+function getOrCreatePlayerId(regNo) {
+  const key = "ikonBrainBattlePlayerId_" + regNo;
+  let id = localStorage.getItem(key);
+
+  if (!id) {
+    id = crypto.randomUUID
+      ? crypto.randomUUID()
+      : "p" + Date.now() + "_" + Math.random().toString(36).slice(2);
+
+    localStorage.setItem(key, id);
+  }
+
+  return id;
+}
 
 
 /* =========================
